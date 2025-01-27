@@ -2096,7 +2096,8 @@ extern void uITRON4_free(void *p) ;
     defined(WOLFSSL_STM32WB) || defined(WOLFSSL_STM32H7) || \
     defined(WOLFSSL_STM32G0) || defined(WOLFSSL_STM32U5) || \
     defined(WOLFSSL_STM32H5) || defined(WOLFSSL_STM32WL) || \
-    defined(WOLFSSL_STM32G4) || defined(WOLFSSL_STM32MP13)
+    defined(WOLFSSL_STM32G4) || defined(WOLFSSL_STM32MP13) || \
+    defined(WOLFSSL_STM32H7S)
 
     #define SIZEOF_LONG_LONG 8
     #ifndef CHAR_BIT
@@ -2144,6 +2145,8 @@ extern void uITRON4_free(void *p) ;
             #include "stm32f7xx_hal.h"
         #elif defined(WOLFSSL_STM32F1)
             #include "stm32f1xx_hal.h"
+        #elif defined(WOLFSSL_STM32H7S)
+            #include "stm32h7rsxx_hal.h"
         #elif defined(WOLFSSL_STM32H7)
             #include "stm32h7xx_hal.h"
         #elif defined(WOLFSSL_STM32WB)
@@ -3620,6 +3623,22 @@ extern void uITRON4_free(void *p) ;
     #ifdef __PIE__
         #define WC_NO_INTERNAL_FUNCTION_POINTERS
     #endif
+
+    #ifndef NO_OLD_WC_NAMES
+        #define NO_OLD_WC_NAMES
+    #endif
+    #ifndef NO_OLD_SHA_NAMES
+        #define NO_OLD_SHA_NAMES
+    #endif
+    #ifndef NO_OLD_MD5_NAME
+        #define NO_OLD_MD5_NAME
+    #endif
+    #ifndef OPENSSL_COEXIST
+        #define OPENSSL_COEXIST
+    #endif
+    #ifndef NO_OLD_SSL_NAMES
+        #define NO_OLD_SSL_NAMES
+    #endif
 #endif
 
 
@@ -4103,7 +4122,8 @@ extern void uITRON4_free(void *p) ;
 #if (defined(HAVE_LIBOQS) ||                                            \
      defined(HAVE_LIBXMSS) ||                                           \
      defined(HAVE_LIBLMS) ||                                            \
-     defined(WOLFSSL_DUAL_ALG_CERTS)) &&                                \
+     defined(WOLFSSL_DUAL_ALG_CERTS) ||                                 \
+     defined(HAVE_ASCON)) &&                                            \
     !defined(WOLFSSL_EXPERIMENTAL_SETTINGS)
     #error Experimental settings without WOLFSSL_EXPERIMENTAL_SETTINGS
 #endif

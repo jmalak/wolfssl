@@ -295,6 +295,25 @@ AC_ARG_ENABLE([hmac],
     [ ENABLED_HMAC=yes ]
     )
 
+# enable HMAC hash copying automatically for x86_64 and aarch64 (except Linux kernel module)
+HMAC_COPY_DEFAULT=no
+if test "$ENABLED_LINUXKM_DEFAULTS" = "no"
+then
+    if test "$host_cpu" = "x86_64" || test "$host_cpu" = "aarch64" || test "$host_cpu" = "amd64"
+    then
+        HMAC_COPY_DEFAULT=yes
+    fi
+fi
+AC_ARG_ENABLE([hmac-copy],
+    [AS_HELP_STRING([--enable-hmac-copy],[Enables digest copying implementation for HMAC (default: disabled)])],
+    [ ENABLED_HMAC_COPY=$enableval ],
+    [ ENABLED_HMAC_COPY=$HMAC_COPY_DEFAULT ]
+    )
+if test "$ENABLED_HMAC_COPY" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_HMAC_COPY_HASH"
+fi
+
 AC_ARG_ENABLE([do178],
     [AS_HELP_STRING([--enable-do178],[Enable DO-178, Will NOT work w/o DO178 license (default: disabled)])],
     [ENABLED_DO178=$enableval],
@@ -948,6 +967,9 @@ then
     test "$enable_tlsv10" = "" && enable_tlsv10=no
     test "$enable_dtls" = "" && enable_dtls=no
     test "$enable_dtls13" = "" && enable_dtls13=no
+    test "$enable_dtls_mtu" = "" && enable_dtls_mtu=no
+    test "$enable_dtlscid" = "" && enable_dtlscid=no
+    test "$enable_dtls_frag_ch" = "" && enable_dtls_frag_ch=no
     test "$enable_mcast" = "" && enable_mcast=no
     test "$enable_srtp" = "" && enable_srtp=no
     test "$enable_ocsp" = "" && enable_ocsp=no
@@ -978,9 +1000,13 @@ then
     test "$enable_all_osp" = "" && test "$ENABLED_LINUXKM_DEFAULTS" != "yes" && enable_all_osp=yes
 
     test "$enable_dtls" = "" && enable_dtls=yes
+    test "$enable_dtls_mtu" = "" && enable_dtls_mtu=yes
+    test "$enable_dtlscid" = "" && enable_dtlscid=yes
+    test "$enable_dtls_frag_ch" = "" && enable_dtls_frag_ch=yes
     if test "x$FIPS_VERSION" != "xv1"
     then
         test "$enable_tls13" = "" && enable_tls13=yes
+        test "$enable_dtls13" = "" && enable_dtls13=yes
     fi
 
     test "$enable_savesession" = "" && enable_savesession=yes
@@ -1372,25 +1398,34 @@ AC_ARG_WITH([liboqs],
 # Used:
 #  - SHA3, Shake128 and Shake256
 AC_ARG_ENABLE([kyber],
-    [AS_HELP_STRING([--enable-kyber],[Enable KYBER (requires --enable-experimental) (default: disabled)])],
+    [AS_HELP_STRING([--enable-kyber],[Enable KYBER (default: disabled)])],
     [ ENABLED_KYBER=$enableval ],
     [ ENABLED_KYBER=no ]
     )
 
 ENABLED_WC_KYBER=no
 ENABLED_ML_KEM=unset
+ENABLED_KYBER_MAKE_KEY=no
+ENABLED_KYBER_ENCAPSULATE=no
+ENABLED_KYBER_DECAPSULATE=no
 for v in `echo $ENABLED_KYBER | tr "," " "`
 do
   case $v in
-  yes | all)
+  yes)
     ENABLED_KYBER512=yes
     ENABLED_KYBER768=yes
     ENABLED_KYBER1024=yes
+    ENABLED_KYBER_MAKE_KEY=yes
+    ENABLED_KYBER_ENCAPSULATE=yes
+    ENABLED_KYBER_DECAPSULATE=yes
     ;;
   no)
     ;;
   small)
     AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_KYBER_SMALL"
+    ;;
+  cache-a)
+    AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_MLKEM_CACHE_A"
     ;;
   512)
     ENABLED_KYBER512=yes
@@ -1400,6 +1435,20 @@ do
     ;;
   1024)
     ENABLED_KYBER1024=yes
+    ;;
+  make)
+    ENABLED_KYBER_MAKE_KEY=yes
+    ;;
+  encapsulate|enc)
+    ENABLED_KYBER_ENCAPSULATE=yes
+    ;;
+  decapsulate|dec)
+    ENABLED_KYBER_DECAPSULATE=yes
+    ;;
+  all)
+    ENABLED_KYBER_MAKE_KEY=yes
+    ENABLED_KYBER_ENCAPSULATE=yes
+    ENABLED_KYBER_DECAPSULATE=yes
     ;;
   original)
     ENABLED_ORIGINAL=yes
@@ -1454,6 +1503,15 @@ then
     else
         AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_NO_ML_KEM"
     fi
+    if test "$ENABLED_KYBER_MAKE_KEY" = "no"; then
+        AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_KYBER_NO_MAKE_KEY"
+    fi
+    if test "$ENABLED_KYBER_ENCAPSULATE" = "no"; then
+        AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_KYBER_NO_ENCAPSULATE"
+    fi
+    if test "$ENABLED_KYBER_DECAPSULATE" = "no"; then
+        AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_KYBER_NO_DECAPSULATE"
+    fi
 
     if test "$ENABLED_WC_KYBER" = "yes"
     then
@@ -1466,7 +1524,7 @@ fi
 # Dilithium
 #  - SHA3, Shake128, Shake256 and AES-CTR
 AC_ARG_ENABLE([dilithium],
-    [AS_HELP_STRING([--enable-dilithium],[Enable DILITHIUM (requires --enable-experimental) (default: disabled)])],
+    [AS_HELP_STRING([--enable-dilithium],[Enable DILITHIUM (default: disabled)])],
     [ ENABLED_DILITHIUM=$enableval ],
     [ ENABLED_DILITHIUM=no ]
     )
@@ -2725,7 +2783,7 @@ AC_ARG_WITH([se050],
     [
         AC_MSG_CHECKING([for SE050])
 
-        LIBS="$LIBS -lSSS_APIs"
+        LIBS="$LIBS -lSSS_APIs -lex_common"
         AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <fsl_sss_api.h>]], [[ sss_mac_init(0);]])],[ libse050_linked=yes ],[ libse050_linked=no ])
 
         if test "x$libse050_linked" = "xno" ; then
@@ -5367,8 +5425,7 @@ AC_ARG_ENABLE([wolfEntropy],
     )
 AC_ARG_ENABLE([entropy-memuse],
     [AS_HELP_STRING([--enable-entropy-memuse],[Enable memuse entropy support (default: disabled)])],
-    [ ENABLED_ENTROPY_MEMUSE=$enableval ],
-    [ ENABLED_ENTROPY_MEMUSE=no ]
+    [ ENABLED_ENTROPY_MEMUSE=$enableval ]
     )
 
 # AES key wrap
@@ -6048,6 +6105,17 @@ then
     AM_CFLAGS="$AM_CFLAGS -DHAVE_XCHACHA"
 fi
 
+# ASCON
+AC_ARG_ENABLE([ascon],
+    [AS_HELP_STRING([--enable-ascon],[Enable ASCON (default: disabled).])],
+    [ ENABLED_ASCON=$enableval ],
+    [ ENABLED_ASCON=no]
+    )
+
+if test "$ENABLED_ASCON" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DHAVE_ASCON"
+fi
 
 # Hash DRBG
 AC_ARG_ENABLE([hashdrbg],
@@ -6920,6 +6988,7 @@ then
     AM_CFLAGS="$AM_CFLAGS -DKEEP_PEER_CERT"
     AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_ALWAYS_VERIFY_CB"
     AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_ALWAYS_KEEP_SNI"
+    AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_TLS13_MIDDLEBOX_COMPAT"
 
     # Enable prereqs if not already enabled
     if test "x$ENABLED_DTLS" = "xno"
@@ -6927,6 +6996,28 @@ then
         ENABLED_DTLS="yes"
         AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_DTLS"
     fi
+
+    if test "x$ENABLED_DTLS13" = "xno"
+    then
+        ENABLED_DTLS13="yes"
+        AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_DTLS13 -DWOLFSSL_W64_WRAPPER"
+        AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_DTLS_DROP_STATS"
+        if test "x$ENABLED_SEND_HRR_COOKIE" = "xundefined"
+        then
+            AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_SEND_HRR_COOKIE"
+            ENABLED_SEND_HRR_COOKIE="yes"
+        fi
+        if test "x$ENABLED_AES" = "xyes"
+        then
+            AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_AES_DIRECT"
+        fi
+    fi
+
+    if test "x$ENABLED_DTLS_MTU" = "xno"
+    then
+        AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_DTLS_MTU"
+    fi
+
     if test "x$ENABLED_OPENSSLEXTRA" = "xno"
     then
         ENABLED_OPENSSLEXTRA="yes"
@@ -8974,7 +9065,6 @@ then
         all) test "$ENABLED_EXPERIMENTAL" = "yes" || AC_MSG_ERROR([linuxkm-lkcapi-register ${lkcapi_alg}: requires --enable-experimental.])
              AM_CFLAGS="$AM_CFLAGS -DLINUXKM_LKCAPI_REGISTER_ALL"           ;;
         'cbc(aes)') test "$ENABLED_AESCBC" != "no" || AC_MSG_ERROR([linuxkm-lkcapi-register ${lkcapi_alg}: AES-CBC implementation not enabled.])
-                    test "$ENABLED_EXPERIMENTAL" = "yes" || AC_MSG_ERROR([linuxkm-lkcapi-register ${lkcapi_alg}: requires --enable-experimental.])
                     AM_CFLAGS="$AM_CFLAGS -DLINUXKM_LKCAPI_REGISTER_AESCBC" ;;
         'cfb(aes)') test "$ENABLED_AESCFB" != "no" || AC_MSG_ERROR([linuxkm-lkcapi-register ${lkcapi_alg}: AES-CFB implementation not enabled.])
                     test "$ENABLED_EXPERIMENTAL" = "yes" || AC_MSG_ERROR([linuxkm-lkcapi-register ${lkcapi_alg}: requires --enable-experimental.])
@@ -9124,7 +9214,6 @@ then
         AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_PRIORITIZE_PSK"
         AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_CHECK_ALERT_ON_ERR"
         AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_TICKET_HAVE_ID"
-        AM_CFLAGS="$AM_CFLAGS -DWOLFSSL_NO_OCSP_ISSUER_CHECK"
         ENABLED_TRUSTED_PEER_CERT=yes
     else
         CFLAGS=$(printf "%s" "$CFLAGS" | sed 's/-DOPENSSL_COMPATIBLE_DEFAULTS//g')
@@ -9975,6 +10064,13 @@ if test "x$ENABLED_LINUXKM" = "xyes"; then
     fi
 fi
 
+AS_IF([test "$ENABLED_ASM" = "no" && (test "$ENABLED_INTELASM" != "no" || \
+                                      test "$ENABLED_AESNI" != "no" || \
+                                      test "$ENABLED_ARMASM" != "no" || \
+                                      test "$ENABLED_RISCV_ASM" != "no" || \
+                                      test "$ENABLED_SP_ASM" != "no")],
+      [AC_MSG_WARN([Conflicting asm settings.])])
+
 # The following AM_CONDITIONAL statements set flags for use in the Makefiles.
 # Some of these affect build targets and objects, some trigger different
 # test scripts for make check.
@@ -10066,6 +10162,7 @@ AM_CONDITIONAL([BUILD_SHA3],[test "x$ENABLED_SHA3" != "xno" || test "x$ENABLED_U
 AM_CONDITIONAL([BUILD_POLY1305],[test "x$ENABLED_POLY1305" = "xyes" || test "x$ENABLED_USERSETTINGS" = "xyes"])
 AM_CONDITIONAL([BUILD_CHACHA],[test "x$ENABLED_CHACHA" = "xyes" || test "x$ENABLED_CHACHA" = "xnoasm" || test "x$ENABLED_USERSETTINGS" = "xyes"])
 AM_CONDITIONAL([BUILD_XCHACHA],[test "x$ENABLED_XCHACHA" = "xyes" || test "x$ENABLED_USERSETTINGS" = "xyes"])
+AM_CONDITIONAL([BUILD_ASCON],[test "x$ENABLED_ASCON" = "xyes" || test "x$ENABLED_USERSETTINGS" = "xyes"])
 AM_CONDITIONAL([BUILD_SM2],[test "x$ENABLED_SM2" != "xno" || test "x$ENABLED_USERSETTINGS" = "xyes"])
 AM_CONDITIONAL([BUILD_SM3],[test "x$ENABLED_SM3" != "xno" || test "x$ENABLED_USERSETTINGS" = "xyes"])
 AM_CONDITIONAL([BUILD_SM4],[test "x$ENABLED_SM4" != "xno" || test "x$ENABLED_USERSETTINGS" = "xyes"])
@@ -10466,6 +10563,7 @@ echo "   * AES-EAX:                    $ENABLED_AESEAX"
 echo "   * AES Bitspliced:             $ENABLED_AESBS"
 echo "   * AES Key Wrap:               $ENABLED_AESKEYWRAP"
 echo "   * ARIA:                       $ENABLED_ARIA"
+echo "   * ASCON:                      $ENABLED_ASCON"
 echo "   * DES3:                       $ENABLED_DES3"
 echo "   * DES3 TLS Suites:            $ENABLED_DES3_TLS_SUITES"
 echo "   * Camellia:                   $ENABLED_CAMELLIA"

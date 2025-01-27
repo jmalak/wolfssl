@@ -182,7 +182,8 @@ enum CertType {
     SPHINCS_SMALL_LEVEL5_TYPE,
     ECC_PARAM_TYPE,
     CHAIN_CERT_TYPE,
-    PKCS7_TYPE
+    PKCS7_TYPE,
+    TRUSTED_CERT_TYPE
 };
 
 
@@ -727,6 +728,8 @@ WOLFSSL_API void wc_FreeDer(DerBuffer** pDer);
     WOLFSSL_API int wc_DerToPemEx(const byte* der, word32 derSz, byte* output,
                                 word32 outputSz, byte *cipherIno, int type);
 #endif
+
+WOLFSSL_API word32 wc_PkcsPad(byte* buf, word32 sz, word32 blockSz);
 
 #ifndef NO_RSA
     WOLFSSL_API int wc_RsaPublicKeyDecode_ex(const byte* input, word32* inOutIdx,

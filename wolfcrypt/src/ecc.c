@@ -7520,7 +7520,7 @@ static int _HMAC_K(byte* K, word32 KSz, byte* V, word32 VSz,
 
     ret = init = wc_HmacInit(&hmac, heap, INVALID_DEVID);
     if (ret == 0)
-        ret = wc_HmacSetKey(&hmac, hashType, K, KSz);
+        ret = wc_HmacSetKey(&hmac, (int)hashType, K, KSz);
 
     if (ret == 0)
         ret = wc_HmacUpdate(&hmac, V, VSz);
@@ -7950,6 +7950,9 @@ int wc_ecc_free(ecc_key* key)
 #endif
 
 #ifdef WOLFSSL_SE050
+#ifdef WOLFSSL_SE050_AUTO_ERASE
+    wc_se050_erase_object(key->keyId);
+#endif
     se050_ecc_free_key(key);
 #endif
 
@@ -9225,6 +9228,7 @@ int wc_ecc_verify_hash_ex(mp_int *r, mp_int *s, const byte* hash,
 #elif defined(WOLFSSL_XILINX_CRYPT_VERSAL)
    byte sigRS[ECC_MAX_CRYPTO_HW_SIZE * 2];
    byte hashcopy[ECC_MAX_CRYPTO_HW_SIZE] = {0};
+#elif defined(WOLFSSL_SE050)
 #else
    int curveLoaded = 0;
    DECLARE_CURVE_SPECS(ECC_CURVE_FIELD_COUNT);
