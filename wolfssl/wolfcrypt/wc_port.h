@@ -122,6 +122,43 @@
 /* THREADING/MUTEX SECTION */
 #if defined(SINGLE_THREADED) && defined(NO_FILESYSTEM)
     /* No system headers required for build. */
+#elif defined(__WATCOMC__)
+    #if defined(SINGLE_THREADED)
+        #if defined(USE_WINDOWS_API)
+            #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
+            #include <windows.h>
+            #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header */
+            #ifndef WOLFSSL_USER_IO
+                #include <winsock2.h>
+                #include <ws2tcpip.h> /* required for InetPton */
+            #endif
+        #elif defined(__OS2__)
+            #include <os2.h>
+        #endif
+    #else
+        #if defined(USE_WINDOWS_API)
+            #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
+            #include <windows.h>
+            #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header */
+            #include <process.h>
+            #ifndef WOLFSSL_USER_IO
+                #include <winsock2.h>
+                #include <ws2tcpip.h> /* required for InetPton */
+            #endif
+        #elif defined(__OS2__)
+            #define INCL_DOSSEMAPHORES
+            #define INCL_DOSPROCESS
+            #include <os2.h>
+            #include <process.h>
+        #else
+            #ifndef WOLFSSL_USER_MUTEX
+                #define WOLFSSL_PTHREADS
+            #endif
+            #if defined(WOLFSSL_PTHREADS)
+                #include <pthread.h>
+            #endif
+        #endif
+    #endif
 #elif defined(USE_WINDOWS_API)
     #if defined(WOLFSSL_PTHREADS)
         #include <pthread.h>
@@ -133,12 +170,11 @@
             #define WIN32_LEAN_AND_MEAN
         #endif
         #if !defined(WOLFSSL_SGX) && !defined(WOLFSSL_NOT_WINDOWS_API)
-            #if defined(_WIN32_WCE) || defined(WIN32_LEAN_AND_MEAN)
-                /* On WinCE winsock2.h must be included before windows.h */
-                #include <winsock2.h>
-            #endif
+            #define _WINSOCKAPI_ /* block inclusion of winsock.h header file. */
             #include <windows.h>
+            #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header */
             #ifndef WOLFSSL_USER_IO
+                #include <winsock2.h>
                 #include <ws2tcpip.h> /* required for InetPton */
             #endif
         #endif /* WOLFSSL_SGX */
@@ -371,6 +407,9 @@
         /* typedef User_Mutex wolfSSL_Mutex; */
     #elif defined(WOLFSSL_LINUXKM)
         /* definitions are in linuxkm/linuxkm_wc_port.h */
+    #elif defined(__WATCOMC__)
+        /* OS/2 */
+        typedef ULONG wolfSSL_Mutex;
     #else
         #error Need a mutex type in multithreaded mode
     #endif /* USE_WINDOWS_API */
@@ -395,6 +434,8 @@
 #ifdef SINGLE_THREADED
     typedef int wolfSSL_Atomic_Int;
     #define WOLFSSL_ATOMIC_INITIALIZER(x) (x)
+    #define WOLFSSL_ATOMIC_LOAD(x) (x)
+    #define WOLFSSL_ATOMIC_STORE(x, val) (x) = (val)
     #define WOLFSSL_ATOMIC_OPS
 #elif defined(HAVE_C___ATOMIC)
 #ifdef __cplusplus
@@ -402,6 +443,8 @@
     /* C++ using direct calls to compiler built-in functions */
     typedef volatile int wolfSSL_Atomic_Int;
     #define WOLFSSL_ATOMIC_INITIALIZER(x) (x)
+    #define WOLFSSL_ATOMIC_LOAD(x) __atomic_load_n(&(x), __ATOMIC_CONSUME)
+    #define WOLFSSL_ATOMIC_STORE(x, val) __atomic_store_n(&(x), val, __ATOMIC_RELEASE)
     #define WOLFSSL_ATOMIC_OPS
 #endif
 #else
@@ -410,6 +453,8 @@
     #include <stdatomic.h>
     typedef atomic_int wolfSSL_Atomic_Int;
     #define WOLFSSL_ATOMIC_INITIALIZER(x) (x)
+    #define WOLFSSL_ATOMIC_LOAD(x) atomic_load(&(x))
+    #define WOLFSSL_ATOMIC_STORE(x, val) atomic_store(&(x), val)
     #define WOLFSSL_ATOMIC_OPS
     #endif /* WOLFSSL_HAVE_ATOMIC_H */
 #endif
@@ -422,6 +467,8 @@
     #endif
     typedef volatile long wolfSSL_Atomic_Int;
     #define WOLFSSL_ATOMIC_INITIALIZER(x) (x)
+    #define WOLFSSL_ATOMIC_LOAD(x) (x)
+    #define WOLFSSL_ATOMIC_STORE(x, val) (x) = (val)
     #define WOLFSSL_ATOMIC_OPS
 #endif
 #endif /* WOLFSSL_NO_ATOMICS */
@@ -757,13 +804,14 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
      * make the API more POSIX like. */
     XFILE z_fs_open(const char* filename, const char* mode);
     int z_fs_close(XFILE file);
+    int z_fs_rewind(XFILE file);
 
     #define XFOPEN              z_fs_open
     #define XFCLOSE             z_fs_close
     #define XFFLUSH             fs_sync
     #define XFSEEK              fs_seek
     #define XFTELL              fs_tell
-    #define XFREWIND            fs_rewind
+    #define XFREWIND            z_fs_rewind
     #define XFREAD(P,S,N,F)     fs_read(F, P, S*N)
     #define XFWRITE(P,S,N,F)    fs_write(F, P, S*N)
     #define XSEEK_SET           FS_SEEK_SET
@@ -887,7 +935,25 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
 
     #if !defined(NO_WOLFSSL_DIR)\
         && !defined(WOLFSSL_NUCLEUS) && !defined(WOLFSSL_NUCLEUS_1_2)
-        #if defined(USE_WINDOWS_API)
+        #if defined(__WATCOMC__)
+            #include <unistd.h>
+            #include <sys/stat.h>
+            #define XWRITE      write
+            #define XREAD       read
+            #define XCLOSE      close
+            #define XSTAT       stat
+            #define XS_ISREG(s) S_ISREG(s)
+            #if defined(__UNIX__)
+                #include <dirent.h>
+                #define SEPARATOR_CHAR ':'
+            #else
+                #include <direct.h>
+                #define SEPARATOR_CHAR ';'
+            #endif
+            #if defined(__NT__)
+                #define XALTHOMEVARNAME "USERPROFILE"
+            #endif
+        #elif defined(USE_WINDOWS_API)
             #include <io.h>
             #include <sys/stat.h>
             #ifndef XSTAT
@@ -925,9 +991,7 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
             #define SEPARATOR_CHAR ':'
 
         #else
-            #ifndef NO_WOLFSSL_DIR
-                #include <dirent.h>
-            #endif
+            #include <dirent.h>
             #include <unistd.h>
             #include <sys/stat.h>
             #define XWRITE      write
@@ -1178,7 +1242,9 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
     #define XGMTIME(c, t)   gmtime((c))
 
 #elif defined(_WIN32_WCE)
+    #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
     #include <windows.h>
+    #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header file */
     #include <stdlib.h> /* For file system */
 
     time_t windows_time(time_t* timer);

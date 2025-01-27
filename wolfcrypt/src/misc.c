@@ -189,6 +189,28 @@ WC_MISC_STATIC WC_INLINE void ByteReverseWords(word32* out, const word32* in,
             out[i] = ByteReverseWord32(in[i]);
     }
 #ifdef WOLFSSL_USE_ALIGN
+    else if (((size_t)in & 0x3) == 0) {
+        byte *out_bytes = (byte *)out;
+        word32 scratch;
+
+        byteCount &= ~0x3U;
+
+        for (i = 0; i < byteCount; i += (word32)sizeof(word32)) {
+            scratch = ByteReverseWord32(*in++);
+            XMEMCPY(out_bytes + i, &scratch, sizeof(scratch));
+        }
+    }
+    else if (((size_t)out & 0x3) == 0) {
+        byte *in_bytes = (byte *)in;
+        word32 scratch;
+
+        byteCount &= ~0x3U;
+
+        for (i = 0; i < byteCount; i += (word32)sizeof(word32)) {
+            XMEMCPY(&scratch, in_bytes + i, sizeof(scratch));
+            *out++ = ByteReverseWord32(scratch);
+        }
+    }
     else {
         byte *in_bytes = (byte *)in;
         byte *out_bytes = (byte *)out;
@@ -335,9 +357,51 @@ WC_MISC_STATIC WC_INLINE void ByteReverseWords64(word64* out, const word64* in,
 {
     word32 count = byteCount/(word32)sizeof(word64), i;
 
-    for (i = 0; i < count; i++)
-        out[i] = ByteReverseWord64(in[i]);
+#ifdef WOLFSSL_USE_ALIGN
+    if ((((size_t)in & 0x7) == 0) &&
+        (((size_t)out & 0x7) == 0))
+#endif
+    {
+        for (i = 0; i < count; i++)
+            out[i] = ByteReverseWord64(in[i]);
+    }
+#ifdef WOLFSSL_USE_ALIGN
+    else if (((size_t)in & 0x7) == 0) {
+        byte *out_bytes = (byte *)out;
+        word64 scratch;
 
+        byteCount &= ~0x7U;
+
+        for (i = 0; i < byteCount; i += (word32)sizeof(word64)) {
+            scratch = ByteReverseWord64(*in++);
+            XMEMCPY(out_bytes + i, &scratch, sizeof(scratch));
+        }
+    }
+    else if (((size_t)out & 0x7) == 0) {
+        byte *in_bytes = (byte *)in;
+        word64 scratch;
+
+        byteCount &= ~0x7U;
+
+        for (i = 0; i < byteCount; i += (word32)sizeof(word64)) {
+            XMEMCPY(&scratch, in_bytes + i, sizeof(scratch));
+            *out++ = ByteReverseWord64(scratch);
+        }
+    }
+    else {
+        byte *in_bytes = (byte *)in;
+        byte *out_bytes = (byte *)out;
+        word64 scratch;
+
+        byteCount &= ~0x7U;
+
+        for (i = 0; i < byteCount; i += (word32)sizeof(word64)) {
+            XMEMCPY(&scratch, in_bytes + i, sizeof(scratch));
+            scratch = ByteReverseWord64(scratch);
+            XMEMCPY(out_bytes + i, &scratch, sizeof(scratch));
+        }
+    }
+#endif
 }
 
 #endif /* WORD64_AVAILABLE && !WOLFSSL_NO_WORD64_OPS */
@@ -506,6 +570,125 @@ WC_MISC_STATIC WC_INLINE int ConstantCompare(const byte* a, const byte* b,
 }
 #endif
 
+#ifndef WOLFSSL_NO_CT_OPS
+/* Constant time - mask set when a > b. */
+WC_MISC_STATIC WC_INLINE byte ctMaskGT(int a, int b)
+{
+    return (byte)((((word32)a - (word32)b - 1) >> 31) - 1);
+}
+
+/* Constant time - mask set when a >= b. */
+WC_MISC_STATIC WC_INLINE byte ctMaskGTE(int a, int b)
+{
+    return (byte)((((word32)a - (word32)b) >> 31) - 1);
+}
+
+/* Constant time - mask set when a >= b. */
+WC_MISC_STATIC WC_INLINE int ctMaskIntGTE(int a, int b)
+{
+    return (int)((((word32)a - (word32)b) >> 31) - 1);
+}
+
+#ifdef WORD64_AVAILABLE
+/* Constant time - mask set when a >= b. */
+WC_MISC_STATIC WC_INLINE word32 ctMaskWord32GTE(word32 a, word32 b)
+{
+  return (word32)((((word64)a - (word64)b) >> 63) - 1);
+}
+#endif
+
+/* Constant time - mask set when a < b. */
+WC_MISC_STATIC WC_INLINE byte ctMaskLT(int a, int b)
+{
+    return (byte)((((word32)b - (word32)a - 1) >> 31) - 1);
+}
+
+/* Constant time - mask set when a <= b. */
+WC_MISC_STATIC WC_INLINE byte ctMaskLTE(int a, int b)
+{
+    return (byte)((((word32)b - (word32)a) >> 31) - 1);
+}
+
+/* Constant time - mask set when a == b. */
+WC_MISC_STATIC WC_INLINE byte ctMaskEq(int a, int b)
+{
+    return (byte)((byte)(~ctMaskGT(a, b)) & (byte)(~ctMaskLT(a, b)));
+}
+
+/* Constant time - sets 16 bit integer mask when a > b */
+WC_MISC_STATIC WC_INLINE word16 ctMask16GT(int a, int b)
+{
+    return (word16)((((word32)a - (word32)b - 1) >> 31) - 1);
+}
+
+/* Constant time - sets 16 bit integer mask when a >= b */
+WC_MISC_STATIC WC_INLINE word16 ctMask16GTE(int a, int b)
+{
+    return (word16)((((word32)a - (word32)b) >> 31) - 1);
+}
+
+/* Constant time - sets 16 bit integer mask when a < b. */
+WC_MISC_STATIC WC_INLINE word16 ctMask16LT(int a, int b)
+{
+    return (word16)((((word32)b - (word32)a - 1) >> 31) - 1);
+}
+
+/* Constant time - sets 16 bit integer mask when a <= b. */
+WC_MISC_STATIC WC_INLINE word16 ctMask16LTE(int a, int b)
+{
+    return (word16)((((word32)b - (word32)a) >> 31) - 1);
+}
+
+/* Constant time - sets 16 bit integer mask when a == b. */
+WC_MISC_STATIC WC_INLINE word16 ctMask16Eq(int a, int b)
+{
+    return (word16)((word16)(~ctMask16GT(a, b)) & (word16)(~ctMask16LT(a, b)));
+}
+
+/* Constant time - mask set when a != b. */
+WC_MISC_STATIC WC_INLINE byte ctMaskNotEq(int a, int b)
+{
+    return (byte)((byte)ctMaskGT(a, b) | (byte)ctMaskLT(a, b));
+}
+
+/* Constant time - select a when mask is set and b otherwise. */
+WC_MISC_STATIC WC_INLINE byte ctMaskSel(byte m, byte a, byte b)
+{
+    return (byte)((b & ((byte)~(word32)m)) | (a & m));
+}
+
+/* Constant time - select integer a when mask is set and integer b otherwise. */
+WC_MISC_STATIC WC_INLINE int ctMaskSelInt(byte m, int a, int b)
+{
+    return (b & (~(signed int)(signed char)m)) |
+           (a & ( (signed int)(signed char)m));
+}
+
+/* Constant time - select word32 a when mask is set and word32 b otherwise. */
+WC_MISC_STATIC WC_INLINE word32 ctMaskSelWord32(byte m, word32 a, word32 b)
+{
+    return (((word32)b & (word32)(~(signed int)(signed char)m)) |
+            ((word32)a & (word32)( (signed int)(signed char)m)));
+}
+
+/* Constant time - bit set when a <= b. */
+WC_MISC_STATIC WC_INLINE byte ctSetLTE(int a, int b)
+{
+    return (byte)(((word32)a - (word32)b - 1) >> 31);
+}
+
+/* Constant time - conditionally copy size bytes from src to dst if mask is set
+ */
+WC_MISC_STATIC WC_INLINE void ctMaskCopy(byte mask, byte* dst, byte* src,
+    word16 size)
+{
+    int i;
+    for (i = 0; i < size; ++i) {
+        dst[i] ^= (dst[i] ^ src[i]) & mask;
+    }
+}
+
+#endif /* !WOLFSSL_NO_CT_OPS */
 
 #ifndef WOLFSSL_HAVE_MIN
     #define WOLFSSL_HAVE_MIN
@@ -515,14 +698,14 @@ WC_MISC_STATIC WC_INLINE int ConstantCompare(const byte* a, const byte* b,
     /* returns the smaller of a and b */
     WC_MISC_STATIC WC_INLINE word32 min(word32 a, word32 b)
     {
+#if !defined(WOLFSSL_NO_CT_OPS) && defined(WORD64_AVAILABLE)
+        word32 gte_mask = (word32)ctMaskWord32GTE(a, b);
+        return (a & ~gte_mask) | (b & gte_mask);
+#else /* WOLFSSL_NO_CT_OPS */
         return a > b ? b : a;
+#endif /* WOLFSSL_NO_CT_OPS */
     }
 #endif /* !WOLFSSL_HAVE_MIN */
-
-    WC_MISC_STATIC WC_INLINE size_t min_size_t(size_t a, size_t b)
-    {
-        return a > b ? b : a;
-    }
 
 #ifndef WOLFSSL_HAVE_MAX
     #define WOLFSSL_HAVE_MAX
@@ -531,14 +714,14 @@ WC_MISC_STATIC WC_INLINE int ConstantCompare(const byte* a, const byte* b,
     #endif
     WC_MISC_STATIC WC_INLINE word32 max(word32 a, word32 b)
     {
+#if !defined(WOLFSSL_NO_CT_OPS) && defined(WORD64_AVAILABLE)
+        word32 gte_mask = (word32)ctMaskWord32GTE(a, b);
+        return (a & gte_mask) | (b & ~gte_mask);
+#else /* WOLFSSL_NO_CT_OPS */
         return a > b ? a : b;
+#endif /* WOLFSSL_NO_CT_OPS */
     }
 #endif /* !WOLFSSL_HAVE_MAX */
-
-    WC_MISC_STATIC WC_INLINE size_t max_size_t(size_t a, size_t b)
-    {
-        return a > b ? a : b;
-    }
 
 #ifndef WOLFSSL_NO_INT_ENCODE
 /* converts a 32 bit integer to 24 bit */
@@ -641,8 +824,10 @@ WC_MISC_STATIC WC_INLINE signed char HexCharToByte(char ch)
 
 WC_MISC_STATIC WC_INLINE char ByteToHex(byte in)
 {
-    static const char kHexChar[] = { '0', '1', '2', '3', '4', '5', '6', '7',
-                                     '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+    static ALIGN64 const char kHexChar[] = {
+        '0', '1', '2', '3', '4', '5', '6', '7',
+        '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
+    };
     return (char)(kHexChar[in & 0xF]);
 }
 
@@ -658,6 +843,11 @@ WC_MISC_STATIC WC_INLINE int ByteToHexStr(byte in, char* out)
 
 WC_MISC_STATIC WC_INLINE int CharIsWhiteSpace(char ch)
 {
+#ifndef WOLFSSL_NO_CT_OPS
+    return (ctMaskEq(ch, ' ') |
+            ctMaskEq(ch, '\t') |
+            ctMaskEq(ch, '\n')) & 1;
+#else /* WOLFSSL_NO_CT_OPS */
     switch (ch) {
         case ' ':
         case '\t':
@@ -666,119 +856,8 @@ WC_MISC_STATIC WC_INLINE int CharIsWhiteSpace(char ch)
         default:
             return 0;
     }
+#endif /* WOLFSSL_NO_CT_OPS */
 }
-
-#ifndef WOLFSSL_NO_CT_OPS
-/* Constant time - mask set when a > b. */
-WC_MISC_STATIC WC_INLINE byte ctMaskGT(int a, int b)
-{
-    return (byte)((((word32)a - (word32)b - 1) >> 31) - 1);
-}
-
-/* Constant time - mask set when a >= b. */
-WC_MISC_STATIC WC_INLINE byte ctMaskGTE(int a, int b)
-{
-    return (byte)((((word32)a - (word32)b) >> 31) - 1);
-}
-
-/* Constant time - mask set when a >= b. */
-WC_MISC_STATIC WC_INLINE int ctMaskIntGTE(int a, int b)
-{
-    return (int)((((word32)a - (word32)b) >> 31) - 1);
-}
-
-/* Constant time - mask set when a < b. */
-WC_MISC_STATIC WC_INLINE byte ctMaskLT(int a, int b)
-{
-    return (byte)((((word32)b - (word32)a - 1) >> 31) - 1);
-}
-
-/* Constant time - mask set when a <= b. */
-WC_MISC_STATIC WC_INLINE byte ctMaskLTE(int a, int b)
-{
-    return (byte)((((word32)b - (word32)a) >> 31) - 1);
-}
-
-/* Constant time - mask set when a == b. */
-WC_MISC_STATIC WC_INLINE byte ctMaskEq(int a, int b)
-{
-    return (byte)((byte)(~ctMaskGT(a, b)) & (byte)(~ctMaskLT(a, b)));
-}
-
-/* Constant time - sets 16 bit integer mask when a > b */
-WC_MISC_STATIC WC_INLINE word16 ctMask16GT(int a, int b)
-{
-    return (word16)((((word32)a - (word32)b - 1) >> 31) - 1);
-}
-
-/* Constant time - sets 16 bit integer mask when a >= b */
-WC_MISC_STATIC WC_INLINE word16 ctMask16GTE(int a, int b)
-{
-    return (word16)((((word32)a - (word32)b) >> 31) - 1);
-}
-
-/* Constant time - sets 16 bit integer mask when a < b. */
-WC_MISC_STATIC WC_INLINE word16 ctMask16LT(int a, int b)
-{
-    return (word16)((((word32)b - (word32)a - 1) >> 31) - 1);
-}
-
-/* Constant time - sets 16 bit integer mask when a <= b. */
-WC_MISC_STATIC WC_INLINE word16 ctMask16LTE(int a, int b)
-{
-    return (word16)((((word32)b - (word32)a) >> 31) - 1);
-}
-
-/* Constant time - sets 16 bit integer mask when a == b. */
-WC_MISC_STATIC WC_INLINE word16 ctMask16Eq(int a, int b)
-{
-    return (word16)((word16)(~ctMask16GT(a, b)) & (word16)(~ctMask16LT(a, b)));
-}
-
-/* Constant time - mask set when a != b. */
-WC_MISC_STATIC WC_INLINE byte ctMaskNotEq(int a, int b)
-{
-    return (byte)((byte)ctMaskGT(a, b) | (byte)ctMaskLT(a, b));
-}
-
-/* Constant time - select a when mask is set and b otherwise. */
-WC_MISC_STATIC WC_INLINE byte ctMaskSel(byte m, byte a, byte b)
-{
-    return (byte)((b & ((byte)~(word32)m)) | (a & m));
-}
-
-/* Constant time - select integer a when mask is set and integer b otherwise. */
-WC_MISC_STATIC WC_INLINE int ctMaskSelInt(byte m, int a, int b)
-{
-    return (b & (~(signed int)(signed char)m)) |
-           (a & ( (signed int)(signed char)m));
-}
-
-/* Constant time - select word32 a when mask is set and word32 b otherwise. */
-WC_MISC_STATIC WC_INLINE word32 ctMaskSelWord32(byte m, word32 a, word32 b)
-{
-    return (((word32)b & (word32)(~(signed int)(signed char)m)) |
-            ((word32)a & (word32)( (signed int)(signed char)m)));
-}
-
-/* Constant time - bit set when a <= b. */
-WC_MISC_STATIC WC_INLINE byte ctSetLTE(int a, int b)
-{
-    return (byte)(((word32)a - (word32)b - 1) >> 31);
-}
-
-/* Constant time - conditionally copy size bytes from src to dst if mask is set
- */
-WC_MISC_STATIC WC_INLINE void ctMaskCopy(byte mask, byte* dst, byte* src,
-    word16 size)
-{
-    int i;
-    for (i = 0; i < size; ++i) {
-        dst[i] ^= (dst[i] ^ src[i]) & mask;
-    }
-}
-
-#endif
 
 #if defined(WOLFSSL_W64_WRAPPER)
 #if defined(WORD64_AVAILABLE) && !defined(WOLFSSL_W64_WRAPPER_TEST)

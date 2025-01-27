@@ -2921,8 +2921,13 @@ static int PKCS7_EncodeSigned(wc_PKCS7* pkcs7,
     /* SignerIdentifier */
     if (pkcs7->sidType == CMS_ISSUER_AND_SERIAL_NUMBER) {
         /* IssuerAndSerialNumber */
-        esd->issuerSnSz = (word32)SetSerialNumber(pkcs7->issuerSn, pkcs7->issuerSnSz,
+        ret = SetSerialNumber(pkcs7->issuerSn, pkcs7->issuerSnSz,
                                           esd->issuerSn, MAX_SN_SZ, MAX_SN_SZ);
+        if (ret < 0) {
+            idx = ret;
+            goto out;
+        }
+        esd->issuerSnSz = (word32)ret;
         signerInfoSz += esd->issuerSnSz;
         esd->issuerNameSz = SetSequence(pkcs7->issuerSz, esd->issuerName);
         signerInfoSz += esd->issuerNameSz + pkcs7->issuerSz;
@@ -8701,14 +8706,10 @@ int wc_PKCS7_SetContentType(wc_PKCS7* pkcs7, byte* contentType, word32 sz)
 /* return size of padded data, padded to blockSz chunks, or negative on error */
 int wc_PKCS7_GetPadSize(word32 inputSz, word32 blockSz)
 {
-    word32 padSz;
-
     if (blockSz == 0)
         return BAD_FUNC_ARG;
 
-    padSz = blockSz - (inputSz % blockSz);
-
-    return (int)padSz;
+    return (int)(blockSz - (inputSz % blockSz));
 }
 
 
@@ -8717,28 +8718,16 @@ int wc_PKCS7_GetPadSize(word32 inputSz, word32 blockSz)
 int wc_PKCS7_PadData(byte* in, word32 inSz, byte* out, word32 outSz,
                      word32 blockSz)
 {
-    int ret;
-    word32 i, padSz;
-
     if (in == NULL  || inSz == 0 ||
-        out == NULL || outSz == 0)
+        out == NULL || outSz == 0 || blockSz == 0)
         return BAD_FUNC_ARG;
 
-    ret = wc_PKCS7_GetPadSize(inSz, blockSz);
-    if (ret < 0)
-        return ret;
-    padSz = (word32)ret;
-
-    if (outSz < (inSz + padSz))
+    if (outSz < wc_PkcsPad(NULL, inSz, blockSz))
         return BAD_FUNC_ARG;
 
     XMEMCPY(out, in, inSz);
 
-    for (i = 0; i < padSz; i++) {
-        out[inSz + i] = (byte)padSz;
-    }
-
-    return (int)(inSz + padSz);
+    return (int)wc_PkcsPad(out, inSz, blockSz);
 }
 
 
