@@ -11916,7 +11916,7 @@ static int GetRecordHeader(WOLFSSL* ssl, word32* inOutIdx,
                              (!ssl->options.dtls &&
                               rh->pvMinor < ssl->version.minor))
         #else
-                            rh->pvMinor < ssl->version.minor
+                            (rh->pvMinor < ssl->version.minor)
         #endif
                    )) {
             WOLFSSL_MSG("SSL version error");
@@ -25676,6 +25676,9 @@ int SendData(WOLFSSL* ssl, const void* data, size_t sz)
             }
             return error;
         }
+        else {
+            ssl->error = 0; /* Clear any previous errors */
+        }
 
         sent += buffSz;
 
@@ -25852,7 +25855,8 @@ startScr:
 #endif
     }
 
-    size = (int)min_size_t(sz, (size_t)ssl->buffers.clearOutputBuffer.length);
+    size = (sz < (size_t)ssl->buffers.clearOutputBuffer.length) ?
+        (int)sz : (int)ssl->buffers.clearOutputBuffer.length;
 
     XMEMCPY(output, ssl->buffers.clearOutputBuffer.buffer, size);
 
@@ -27818,6 +27822,7 @@ static int ParseCipherList(Suites* suites,
             }
             if (currLen == 0)
                 break;
+            ++next; /* increment to skip ':' */
         }
 
     #if defined(OPENSSL_EXTRA) || defined(OPENSSL_ALL)
@@ -28169,8 +28174,7 @@ static int ParseCipherList(Suites* suites,
                 break;
             }
         }
-    }
-    while (next++); /* increment to skip ':' */
+    } while (next);
 
     if (ret) {
         int keySz = 0;
