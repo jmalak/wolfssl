@@ -1,0 +1,66 @@
+name: Build Watcom C
+
+# START OF COMMON SECTION
+on:
+  push:
+    branches: [ 'master', 'main', 'release/**' ]
+  pull_request:
+    branches: [ '*' ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+# END OF COMMON SECTION
+
+jobs:
+  wolfssl_watcomc_linux:
+    if: github.repository_owner == 'wolfssl'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download OpenWatcom v2 C compiler
+        shell: bash
+        run: |
+          wget --no-verbose 'https://github.com/open-watcom/open-watcom-v2/releases/download/Current-build/open-watcom-2_0-c-linux-x64' -O ~/ow.zip
+          mkdir -p ~/openwatcom
+          cd ~/openwatcom
+          unzip -q ~/ow.zip
+          chmod -R a+rx ~/openwatcom
+
+      - name: Checkout wolfSSL
+        uses: actions/checkout@v4
+        with:
+          path: wolfssl
+
+      - name: Build wolfSSL
+        working-directory: wolfssl
+        shell: bash
+        run: |
+          export WATCOM=~/openwatcom
+          export PATH="$WATCOM/binl64:$WATCOM/binl:$PATH"
+          export INCLUDE=$WATCOM/lh:$INCLUDE
+          export EDPATH=$WATCOM/eddat
+          export WWINHELP=$WATCOM/binw
+          export WIPFC=$WATCOM/wipfc
+          cmake -B build -G "Watcom WMake" -D CMAKE_VERBOSE_MAKEFILE=TRUE -D CMAKE_SYSTEM_NAME=Linux -D CMAKE_SYSTEM_PROCESSOR=x86 -D WOLFSSL_ASM=no -D WOLFSSL_SINGLE_THREADED=yes -D BUILD_SHARED_LIBS=no -D WOLFSSL_EXAMPLES=no -D WOLFSSL_CRYPT_TESTS=no
+          cmake --build ./build/
+
+  wolfssl_watcomc_windows:
+    if: github.repository_owner == 'wolfssl'
+    runs-on: windows-latest
+    steps:
+      - name: Setup OpenOatcom V2
+        uses: open-watcom/setup-watcom@v0
+        with:
+          version: "2.0"
+
+      - name: Checkout wolfSSL
+        uses: actions/checkout@v4
+        with:
+          path: wolfssl
+
+      - name: Build wolfSSL
+        working-directory: wolfssl
+        shell: bash
+        run: |
+          cmake -B build -G "Watcom WMake" -D CMAKE_VERBOSE_MAKEFILE=TRUE -D CMAKE_SYSTEM_NAME=Windows -D CMAKE_SYSTEM_PROCESSOR=x86 -D WOLFSSL_ASM=no -D WOLFSSL_SINGLE_THREADED=yes -D BUILD_SHARED_LIBS=no -D WOLFSSL_EXAMPLES=no -D WOLFSSL_CRYPT_TESTS=no
+          cmake --build build
