@@ -1521,7 +1521,7 @@ static WC_INLINE int tcp_select_ex(SOCKET_T socketfd, int to_sec, int rx)
     fd_set* recvfds = NULL;
     fd_set* sendfds = NULL;
     SOCKET_T nfds = socketfd + 1;
-#if !defined(__INTEGRITY)
+#if !defined(__INTEGRITY) && !defined(__WATCOMC__)
     struct timeval timeout = {(to_sec > 0) ? to_sec : 0, 0};
 #else
     struct timeval timeout;
@@ -1538,7 +1538,7 @@ static WC_INLINE int tcp_select_ex(SOCKET_T socketfd, int to_sec, int rx)
     else
         sendfds = &fds;
 
-#if defined(__INTEGRITY)
+#if defined(__INTEGRITY) || defined(__WATCOMC__)
     timeout.tv_sec = (long long)(to_sec > 0) ? to_sec : 0, 0;
 #endif
     result = select(nfds, recvfds, sendfds, &errfds, &timeout);
