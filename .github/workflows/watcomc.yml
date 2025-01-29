@@ -13,45 +13,31 @@ concurrency:
 # END OF COMMON SECTION
 
 jobs:
-  wolfssl_watcomc_linux:
-    if: github.repository_owner == 'wolfssl'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download OpenWatcom v2 C compiler
-        shell: bash
-        run: |
-          wget --no-verbose 'https://github.com/open-watcom/open-watcom-v2/releases/download/Current-build/open-watcom-2_0-c-linux-x64' -O ~/ow.zip
-          mkdir -p ~/openwatcom
-          cd ~/openwatcom
-          unzip -q ~/ow.zip
-          chmod -R a+rx ~/openwatcom
-
-      - name: Checkout wolfSSL
-        uses: actions/checkout@v4
-        with:
-          path: wolfssl
-
-      - name: Build wolfSSL
-        working-directory: wolfssl
-        shell: bash
-        run: |
-          export WATCOM=~/openwatcom
-          export PATH="$WATCOM/binl64:$WATCOM/binl:$PATH"
-          export INCLUDE=$WATCOM/lh:$INCLUDE
-          export EDPATH=$WATCOM/eddat
-          export WWINHELP=$WATCOM/binw
-          export WIPFC=$WATCOM/wipfc
-          cmake -B build -G "Watcom WMake" -D CMAKE_VERBOSE_MAKEFILE=TRUE -D CMAKE_SYSTEM_NAME=Linux -D CMAKE_SYSTEM_PROCESSOR=x86 -D WOLFSSL_ASM=no -D WOLFSSL_SINGLE_THREADED=yes -D BUILD_SHARED_LIBS=no -D WOLFSSL_EXAMPLES=no -D WOLFSSL_CRYPT_TESTS=no
-          cmake --build ./build/
-
   wolfssl_watcomc_windows:
     if: github.repository_owner == 'wolfssl'
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - title:   'Windows OW 2.0'
+            system:   'Windows'
+            image:    'windows-latest'
+            owimage:  '2.0'
+          - title:   'Linux OW 2.0'
+            system:   'Linux'
+            image:    'ubuntu-latest'
+            owimage:  '2.0'
+          #- title:   'OS/2 OW 2.0'
+          #  system:   'OS2'
+          #  image:    'windows-latest'
+          #  owimage:  '2.0'
+    runs-on: ${{ matrix.platform.image }}
+    name: ${{ matrix.platform.title }}
     steps:
-      - name: Setup OpenOatcom V2
+      - name: Setup Open Watcom ${{ matrix.platform.owimage }}
         uses: open-watcom/setup-watcom@v0
         with:
-          version: "2.0"
+          version: ${{ matrix.platform.owimage }}
 
       - name: Checkout wolfSSL
         uses: actions/checkout@v4
@@ -62,5 +48,5 @@ jobs:
         working-directory: wolfssl
         shell: bash
         run: |
-          cmake -B build -G "Watcom WMake" -D CMAKE_VERBOSE_MAKEFILE=TRUE -D CMAKE_SYSTEM_NAME=Windows -D CMAKE_SYSTEM_PROCESSOR=x86 -D WOLFSSL_ASM=no -D WOLFSSL_SINGLE_THREADED=yes -D BUILD_SHARED_LIBS=no -D WOLFSSL_EXAMPLES=no -D WOLFSSL_CRYPT_TESTS=no
+          cmake -B build -G "Watcom WMake" -D CMAKE_VERBOSE_MAKEFILE=TRUE -D CMAKE_SYSTEM_NAME=${{ matrix.platform.system }} -D CMAKE_SYSTEM_PROCESSOR=x86 -D WOLFSSL_ASM=no -D WOLFSSL_SINGLE_THREADED=yes -D BUILD_SHARED_LIBS=no -D WOLFSSL_EXAMPLES=no -D WOLFSSL_CRYPT_TESTS=no
           cmake --build build
