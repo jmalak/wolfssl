@@ -120,7 +120,19 @@
 #endif
 
 /* THREADING/MUTEX SECTION */
-#if defined(SINGLE_THREADED) && defined(NO_FILESYSTEM)
+#if defined(__WATCOMC__)
+    #if !defined(SINGLE_THREADED)
+        #if defined(WOLFSSL_PTHREADS)
+            #include <pthread.h>
+        #else
+            #if defined(USE_WINDOWS_API)
+                #define _WINSOCKAPI_
+                #include <windows.h>
+            #endif
+            #include <process.h>
+        #endif
+    #endif
+#elif defined(SINGLE_THREADED) && defined(NO_FILESYSTEM)
     /* No system headers required for build. */
 #elif defined(USE_WINDOWS_API)
     #if defined(WOLFSSL_PTHREADS)

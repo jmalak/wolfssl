@@ -198,13 +198,20 @@ find_package(Threads)
 # Example for map file and custom linker script
 #set(CMAKE_EXE_LINKER_FLAGS " -Xlinker -Map=output.map -T\"${CMAKE_CURRENT_SOURCE_DIR}/linker.ld\"")
 
+message(STATUS "C Compiler ID: ${CMAKE_C_COMPILER_ID}")
+
 if(DEFINED WARNING_C_FLAGS)
-set(CMAKE_C_FLAGS "${WARNING_C_FLAGS} ${CMAKE_C_FLAGS}")
+    set(CMAKE_C_FLAGS "${WARNING_C_FLAGS} ${CMAKE_C_FLAGS}")
+endif()
+
+if(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -wx -wcd=202")
+    list(APPEND WOLFSSL_DEFINITIONS "-DWOLFSSL_HAVE_MIN -DWOLFSSL_HAVE_MAX -DNO_WRITEV")
 elseif(WIN32)
-# Windows cl.exe does not support the -Wextra, -Wno-unused and -Werror flags.
-set(CMAKE_C_FLAGS "-Wall ${CMAKE_C_FLAGS}")
+    # Windows cl.exe does not support the -Wextra, -Wno-unused and -Werror flags.
+    set(CMAKE_C_FLAGS "-Wall ${CMAKE_C_FLAGS}")
 else()
-set(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unused -Werror ${CMAKE_C_FLAGS}")
+    set(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unused -Werror ${CMAKE_C_FLAGS}")
 endif()
 
 ####################################################

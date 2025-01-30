@@ -27,7 +27,7 @@
 
 #ifndef NO_FILESYSTEM
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined(__WATCOMC__)
 #include <direct.h>
 #endif
 
@@ -48,6 +48,9 @@ char* create_tmp_dir(char *tmpDir, int len)
     if (_mkdir(tmpDir) != 0)
         return NULL;
 #elif defined(__MINGW32__)
+    if (mkdir(tmpDir) != 0)
+        return NULL;
+#elif defined(__WATCOMC__)
     if (mkdir(tmpDir) != 0)
         return NULL;
 #else

@@ -5321,8 +5321,6 @@ static int test_wolfSSL_CTX_SetMinMaxDhKey_Sz(void)
     (!defined(NO_WOLFSSL_CLIENT) || !defined(NO_WOLFSSL_SERVER))
     WOLFSSL_CTX *ctx;
 
-    (void)ctx;
-
   #ifndef NO_WOLFSSL_CLIENT
     ctx = wolfSSL_CTX_new(wolfSSLv23_client_method());
   #else
@@ -81872,7 +81870,10 @@ static       char earlyDataBuffer[1];
 static int test_tls13_apis(void)
 {
     EXPECT_DECLS;
+#if defined(HAVE_SUPPORTED_CURVES) && defined(HAVE_ECC) && \
+    (!defined(NO_WOLFSSL_SERVER) || !defined(NO_WOLFSSL_CLIENT))
     int          ret;
+#endif
 #ifndef WOLFSSL_NO_TLS12
 #ifndef NO_WOLFSSL_CLIENT
     WOLFSSL_CTX* clientTls12Ctx = NULL;
@@ -81995,8 +81996,6 @@ static int test_tls13_apis(void)
 #if defined(WOLFSSL_HAVE_KYBER)
     int kyberLevel;
 #endif
-
-    (void)ret;
 
 #ifndef WOLFSSL_NO_TLS12
 #ifndef NO_WOLFSSL_CLIENT
@@ -93022,10 +93021,7 @@ static int test_wolfSSL_CTX_set_timeout(void)
     EXPECT_DECLS;
 #if !defined(NO_WOLFSSL_SERVER) && !defined(NO_TLS) && \
     !defined(NO_SESSION_CACHE)
-    int timeout;
     WOLFSSL_CTX* ctx = NULL;
-
-    (void)timeout;
 
     ExpectNotNull(ctx = wolfSSL_CTX_new(wolfSSLv23_server_method()));
 
@@ -102855,14 +102851,19 @@ static const char* apitest_res_string(int res)
 
 #ifndef WOLFSSL_UNIT_TEST_NO_TIMING
 static double gettime_secs(void)
-    #if defined(_MSC_VER) && defined(_WIN32)
+    #if defined(_WIN32) && (defined(_MSC_VER) || defined(__WATCOMC__))
     {
         /* there's no gettimeofday for Windows, so we'll use system time */
         #define EPOCH_DIFF 11644473600LL
         FILETIME currentFileTime;
-        GetSystemTimePreciseAsFileTime(&currentFileTime);
-
         ULARGE_INTEGER uli = { 0, 0 };
+
+    #if defined(__WATCOMC__)
+        GetSystemTimeAsFileTime(&currentFileTime);
+    #else
+        GetSystemTimePreciseAsFileTime(&currentFileTime);
+    #endif
+
         uli.LowPart = currentFileTime.dwLowDateTime;
         uli.HighPart = currentFileTime.dwHighDateTime;
 

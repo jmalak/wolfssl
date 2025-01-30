@@ -248,7 +248,7 @@ static int TranslateIoReturnCode(int err, SOCKET_T sd, int direction)
         return WOLFSSL_CBIO_ERR_CONN_CLOSE;
     }
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__WATCOMC__)
     strcpy_s(errstr, sizeof(errstr), "\tGeneral error: ");
     errstr_offset = strlen(errstr);
     FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
