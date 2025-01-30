@@ -421,6 +421,8 @@ typedef struct w64wrapper {
     #ifdef HAVE_THREAD_LS
         #if defined(_MSC_VER) || defined(__WATCOMC__)
             #define THREAD_LS_T __declspec(thread)
+        #elif defined(__WATCOMC__)
+            #define THREAD_LS_T __declspec(thread)
         /* Thread local storage only in FreeRTOS v8.2.1 and higher */
         #elif defined(FREERTOS) || defined(FREERTOS_TCP) || \
                                                          defined(WOLFSSL_ZEPHYR)
@@ -1627,7 +1629,9 @@ typedef struct w64wrapper {
         #define WOLFSSL_COND
         #define INVALID_THREAD_VAL ((THREAD_TYPE)(INVALID_HANDLE_VALUE))
         #define WOLFSSL_THREAD __stdcall
-        #if !defined(__MINGW32__)
+        #if defined(__WATCOMC__)
+            #define WOLFSSL_THREAD_NO_JOIN __watcall
+        #elif !defined(__MINGW32__)
             #define WOLFSSL_THREAD_NO_JOIN __cdecl
         #endif
     #elif defined(THREADX)

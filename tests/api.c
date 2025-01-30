@@ -5174,8 +5174,6 @@ static int test_wolfSSL_CTX_SetMinMaxDhKey_Sz(void)
     (!defined(NO_WOLFSSL_CLIENT) || !defined(NO_WOLFSSL_SERVER))
     WOLFSSL_CTX *ctx;
 
-    (void)ctx;
-
   #ifndef NO_WOLFSSL_CLIENT
     ctx = wolfSSL_CTX_new(wolfSSLv23_client_method());
   #else
