@@ -41,11 +41,6 @@
     #include <errno.h>
 #endif
 
-#ifdef _WIN32_WCE
-    /* On WinCE winsock2.h must be included before windows.h for socket stuff */
-    #include <winsock2.h>
-#endif
-
 #include <wolfssl/internal.h>
 #include <wolfssl/error-ssl.h>
 #include <wolfssl/wolfio.h>
@@ -56,7 +51,9 @@ int Nucleus_Net_Errno;
 #endif
 
 #if defined(USE_WOLFSSL_IO) || defined(HAVE_HTTP_CLIENT)
-    #ifndef USE_WINDOWS_API
+    #ifdef USE_WINDOWS_API
+        #include <winsock2.h>
+    #else
         #if defined(WOLFSSL_LWIP) && !defined(WOLFSSL_APACHE_MYNEWT)
         #elif defined(ARDUINO)
         #elif defined(FREESCALE_MQX)

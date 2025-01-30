@@ -87,6 +87,7 @@ This library contains implementation for the random number generator.
     #ifndef _WIN32_WINNT
         #define _WIN32_WINNT 0x0400
     #endif
+    #define _WINSOCKAPI_
     #include <windows.h>
     #include <wincrypt.h>
 #elif defined(HAVE_WNR)

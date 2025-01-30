@@ -2131,6 +2131,7 @@ static WC_INLINE unsigned int my_psk_client_cs_cb(WOLFSSL* ssl,
 #elif defined(USE_WINDOWS_API)
 
     #define WIN32_LEAN_AND_MEAN
+    #define _WINSOCKAPI_
     #include <windows.h>
 
     static WC_INLINE double current_time(int reset)
