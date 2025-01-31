@@ -174,7 +174,6 @@
             #include <windows.h>
             #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header */
             #ifndef WOLFSSL_USER_IO
-                #include <winsock2.h>
                 #include <ws2tcpip.h> /* required for InetPton */
             #endif
         #endif /* WOLFSSL_SGX */
