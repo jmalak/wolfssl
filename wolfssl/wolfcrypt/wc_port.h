@@ -120,7 +120,19 @@
 #endif
 
 /* THREADING/MUTEX SECTION */
-#if defined(SINGLE_THREADED) && defined(NO_FILESYSTEM)
+#if defined(__WATCOMC__)
+    #if !defined(SINGLE_THREADED)
+        #if defined(WOLFSSL_PTHREADS)
+            #include <pthread.h>
+        #else
+            #if defined(USE_WINDOWS_API)
+                #define _WINSOCKAPI_
+                #include <windows.h>
+            #endif
+            #include <process.h>
+        #endif
+    #endif
+#elif defined(SINGLE_THREADED) && defined(NO_FILESYSTEM)
     /* No system headers required for build. */
 #elif defined(USE_WINDOWS_API)
     #if defined(WOLFSSL_PTHREADS)
@@ -133,10 +145,7 @@
             #define WIN32_LEAN_AND_MEAN
         #endif
         #if !defined(WOLFSSL_SGX) && !defined(WOLFSSL_NOT_WINDOWS_API)
-            #if defined(_WIN32_WCE) || defined(WIN32_LEAN_AND_MEAN)
-                /* On WinCE winsock2.h must be included before windows.h */
-                #include <winsock2.h>
-            #endif
+            #define _WINSOCKAPI_
             #include <windows.h>
             #ifndef WOLFSSL_USER_IO
                 #include <ws2tcpip.h> /* required for InetPton */
@@ -1178,6 +1187,7 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
     #define XGMTIME(c, t)   gmtime((c))
 
 #elif defined(_WIN32_WCE)
+    #define _WINSOCKAPI_
     #include <windows.h>
     #include <stdlib.h> /* For file system */
 
