@@ -165,7 +165,6 @@
             /* winsock2.h expects _WINSOCKAPI_ to be undef, and defines it. */
             #undef _WINSOCKAPI_
             #ifndef WOLFSSL_USER_IO
-                #include <winsock2.h>
                 #include <ws2tcpip.h> /* required for InetPton */
             #endif
         #endif /* WOLFSSL_SGX */
