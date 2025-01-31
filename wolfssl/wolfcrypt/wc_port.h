@@ -131,6 +131,11 @@
             #endif
             #include <process.h>
         #endif
+    #else
+        #if defined(USE_WINDOWS_API)
+            #define _WINSOCKAPI_
+            #include <windows.h>
+        #endif
     #endif
 #elif defined(SINGLE_THREADED) && defined(NO_FILESYSTEM)
     /* No system headers required for build. */
