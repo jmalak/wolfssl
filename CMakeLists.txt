@@ -206,7 +206,7 @@ endif()
 
 if(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -wx -wcd=202")
-    list(APPEND WOLFSSL_DEFINITIONS "-DWOLFSSL_NOT_WINDOWS_API -DWOLFSSL_HAVE_MIN -DWOLFSSL_HAVE_MAX -DNO_WRITEV -DWOLFSSL_NO_SOCK -DWOLFSSL_USER_IO")
+    list(APPEND WOLFSSL_DEFINITIONS "-DWOLFSSL_HAVE_MIN -DWOLFSSL_HAVE_MAX -DNO_WRITEV")
 elseif(WIN32)
     # Windows cl.exe does not support the -Wextra, -Wno-unused and -Werror flags.
     set(CMAKE_C_FLAGS "-Wall ${CMAKE_C_FLAGS}")
@@ -2492,34 +2492,32 @@ if(WOLFSSL_EXAMPLES)
                  ${WOLFSSL_OUTPUT_BASE}/examples/benchmark)
     endif()
 
-    if(NOT WOLFSSL_SINGLE_THREADED)
-        # Build unit tests
-        add_executable(unit_test
-            tests/api.c
-            tests/api/ascon.c
-            tests/hash.c
-            tests/srp.c
-            tests/suites.c
-            tests/w64wrapper.c
-            tests/unit.c
-            tests/quic.c
-            examples/server/server.c
-            examples/client/client.c)
-        target_include_directories(unit_test PRIVATE
-            ${CMAKE_CURRENT_BINARY_DIR})
-        target_compile_options(unit_test PUBLIC "-DNO_MAIN_DRIVER")
-        target_link_libraries(unit_test wolfssl)
-        target_link_libraries(unit_test Threads::Threads)
-        set_property(TARGET unit_test
-                    PROPERTY RUNTIME_OUTPUT_DIRECTORY
-                    ${WOLFSSL_OUTPUT_BASE}/tests/)
-        set_property(TARGET unit_test
-                    PROPERTY RUNTIME_OUTPUT_NAME
-                    unit.test)
-        add_test(NAME unit_test
-                COMMAND $<TARGET_FILE:unit_test>
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    endif()
+    # Build unit tests
+    add_executable(unit_test
+        tests/api.c
+        tests/api/ascon.c
+        tests/hash.c
+        tests/srp.c
+        tests/suites.c
+        tests/w64wrapper.c
+        tests/unit.c
+        tests/quic.c
+        examples/server/server.c
+        examples/client/client.c)
+    target_include_directories(unit_test PRIVATE
+        ${CMAKE_CURRENT_BINARY_DIR})
+    target_compile_options(unit_test PUBLIC "-DNO_MAIN_DRIVER")
+    target_link_libraries(unit_test wolfssl)
+    target_link_libraries(unit_test Threads::Threads)
+    set_property(TARGET unit_test
+                 PROPERTY RUNTIME_OUTPUT_DIRECTORY
+                 ${WOLFSSL_OUTPUT_BASE}/tests/)
+    set_property(TARGET unit_test
+                 PROPERTY RUNTIME_OUTPUT_NAME
+                 unit.test)
+    add_test(NAME unit_test
+             COMMAND $<TARGET_FILE:unit_test>
+             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
 if(WOLFSSL_CRYPT_TESTS)
