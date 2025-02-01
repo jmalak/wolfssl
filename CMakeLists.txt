@@ -153,6 +153,8 @@ endif()
 # Thread local storage
 include(CheckCSourceCompiles)
 
+if(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+else()
 set(TLS_KEYWORDS "__thread" "__declspec(thread)")
 foreach(TLS_KEYWORD IN LISTS TLS_KEYWORDS)
     set(TLS_CODE "#include <stdlib.h>
@@ -179,6 +181,7 @@ foreach(TLS_KEYWORD IN LISTS TLS_KEYWORDS)
         unset(THREAD_LS_ON CACHE)
     endif()
 endforeach()
+endif()
 
 # TODO: AX_PTHREAD does a lot. Need to implement the
 #       rest of its logic.
@@ -198,13 +201,20 @@ find_package(Threads)
 # Example for map file and custom linker script
 #set(CMAKE_EXE_LINKER_FLAGS " -Xlinker -Map=output.map -T\"${CMAKE_CURRENT_SOURCE_DIR}/linker.ld\"")
 
+message(STATUS "C Compiler ID: ${CMAKE_C_COMPILER_ID}")
+
 if(DEFINED WARNING_C_FLAGS)
-set(CMAKE_C_FLAGS "${WARNING_C_FLAGS} ${CMAKE_C_FLAGS}")
+    set(CMAKE_C_FLAGS "${WARNING_C_FLAGS} ${CMAKE_C_FLAGS}")
+endif()
+
+if(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -wx -wcd=202")
+    list(APPEND WOLFSSL_DEFINITIONS "-DWOLFSSL_HAVE_MIN -DWOLFSSL_HAVE_MAX -DNO_WRITEV -DWOLFSSL_CRYPT_TESTS")
 elseif(WIN32)
-# Windows cl.exe does not support the -Wextra, -Wno-unused and -Werror flags.
-set(CMAKE_C_FLAGS "-Wall ${CMAKE_C_FLAGS}")
+    # Windows cl.exe does not support the -Wextra, -Wno-unused and -Werror flags.
+    set(CMAKE_C_FLAGS "-Wall ${CMAKE_C_FLAGS}")
 else()
-set(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unused -Werror ${CMAKE_C_FLAGS}")
+    set(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unused -Werror ${CMAKE_C_FLAGS}")
 endif()
 
 ####################################################
@@ -284,6 +294,10 @@ if(NOT WOLFSSL_SINGLE_THREADED)
         list(APPEND WOLFSSL_DEFINITIONS
             "-DHAVE_PTHREAD"
             "-D_POSIX_THREADS")
+    elseif(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom" AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set(HAVE_PTHREAD 1)
+        list(APPEND WOLFSSL_DEFINITIONS
+            "-DHAVE_PTHREAD")
     endif()
 else()
     list(APPEND WOLFSSL_DEFINITIONS "-DSINGLE_THREADED")
@@ -2414,6 +2428,7 @@ if (WIN32 OR ${CMAKE_SYSTEM_NAME} MATCHES "^MSYS" OR ${CMAKE_SYSTEM_NAME} MATCHE
     message("Building on Windows/MSYS/MINGW")
     target_link_libraries(wolfssl PUBLIC
         ws2_32 crypt32 advapi32)
+elseif(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
 elseif(APPLE)
     message("Building on Apple")
     if(WOLFSSL_SYS_CA_CERTS)
@@ -2479,7 +2494,9 @@ if(WOLFSSL_EXAMPLES)
         add_executable(tls_bench
             ${CMAKE_CURRENT_SOURCE_DIR}/examples/benchmark/tls_bench.c)
         target_link_libraries(tls_bench wolfssl)
-        target_link_libraries(tls_bench Threads::Threads)
+        if(NOT CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
+            target_link_libraries(tls_bench Threads::Threads)
+        endif()
         set_property(TARGET tls_bench
                  PROPERTY RUNTIME_OUTPUT_DIRECTORY
                  ${WOLFSSL_OUTPUT_BASE}/examples/benchmark)
@@ -2500,7 +2517,9 @@ if(WOLFSSL_EXAMPLES)
         ${CMAKE_CURRENT_BINARY_DIR})
     target_compile_options(unit_test PUBLIC "-DNO_MAIN_DRIVER")
     target_link_libraries(unit_test wolfssl)
-    target_link_libraries(unit_test Threads::Threads)
+    if(NOT CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
+        target_link_libraries(tls_bench Threads::Threads)
+    endif()
     set_property(TARGET unit_test
                  PROPERTY RUNTIME_OUTPUT_DIRECTORY
                  ${WOLFSSL_OUTPUT_BASE}/tests/)
@@ -2750,19 +2769,22 @@ if(WOLFSSL_INSTALL)
     set(includedir "\${prefix}/include")
     set(VERSION ${PROJECT_VERSION})
 
-    # Setting libm in Libs.private of wolfssl.pc.
-    # See "Link Libraries" in above about `m` insertion to LINK_LIBRARIES
-    get_target_property(_wolfssl_dep_libs wolfssl LINK_LIBRARIES)
-    list(FIND _wolfssl_dep_libs m _dep_libm)
-    if ("${_dep_libm}" GREATER -1)
-      set(LIBM -lm)
+    if(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
     else()
-      set(LIBM)
-    endif()
+      # Setting libm in Libs.private of wolfssl.pc.
+      # See "Link Libraries" in above about `m` insertion to LINK_LIBRARIES
+      get_target_property(_wolfssl_dep_libs wolfssl LINK_LIBRARIES)
+      list(FIND _wolfssl_dep_libs m _dep_libm)
+      if ("${_dep_libm}" GREATER -1)
+        set(LIBM -lm)
+      else()
+        set(LIBM)
+      endif()
 
-    configure_file(support/wolfssl.pc.in ${CMAKE_CURRENT_BINARY_DIR}/support/wolfssl.pc @ONLY)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/support/wolfssl.pc
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+      configure_file(support/wolfssl.pc.in ${CMAKE_CURRENT_BINARY_DIR}/support/wolfssl.pc @ONLY)
+      install(FILES ${CMAKE_CURRENT_BINARY_DIR}/support/wolfssl.pc
+      DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+    endif()
 
     include(CMakePackageConfigHelpers)
     configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in

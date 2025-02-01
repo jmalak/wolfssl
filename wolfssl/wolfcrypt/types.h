@@ -408,6 +408,8 @@ typedef struct w64wrapper {
     #ifdef HAVE_THREAD_LS
         #if defined(_MSC_VER)
             #define THREAD_LS_T __declspec(thread)
+        #elif defined(__WATCOMC__)
+            #define THREAD_LS_T __declspec(thread)
         /* Thread local storage only in FreeRTOS v8.2.1 and higher */
         #elif defined(FREERTOS) || defined(FREERTOS_TCP) || \
                                                          defined(WOLFSSL_ZEPHYR)
@@ -1475,6 +1477,44 @@ typedef struct w64wrapper {
          * wolfSSL_JoinThread() and wolfSSL_Cond signaling if they want.
          * Otherwise, those functions are omitted.
         */
+    #elif defined(__WATCOMC__)
+      #if defined(__NT__) || defined(__OS2__)
+        typedef unsigned      THREAD_RETURN;
+      #if defined(__OS2__)
+        typedef int           THREAD_TYPE;
+      #else
+        typedef uintptr_t     THREAD_TYPE;
+      #endif
+        typedef struct COND_TYPE {
+            wolfSSL_Mutex mutex;
+      #if defined(__OS2__)
+            LHANDLE cond;
+      #else
+            HANDLE cond;
+      #endif
+        } COND_TYPE;
+        #define WOLFSSL_COND
+      #if defined(__OS2__)
+        #define INVALID_THREAD_VAL ((THREAD_TYPE)(-1))
+      #else
+        #define INVALID_THREAD_VAL ((THREAD_TYPE)(INVALID_HANDLE_VALUE))
+      #endif
+        #define WOLFSSL_THREAD __stdcall
+        #define WOLFSSL_THREAD_NO_JOIN __watcall
+      #elif defined(__LINUX__)
+        #include <pthread.h>
+        typedef struct COND_TYPE {
+            pthread_mutex_t mutex;
+            pthread_cond_t cond;
+        } COND_TYPE;
+        typedef void*         THREAD_RETURN;
+        typedef pthread_t     THREAD_TYPE;
+        #define WOLFSSL_COND
+        #define WOLFSSL_THREAD
+        #ifndef HAVE_SELFTEST
+            #define WOLFSSL_THREAD_NO_JOIN
+        #endif
+      #endif
     #elif defined(WOLFSSL_MDK_ARM) || defined(WOLFSSL_KEIL_TCP_NET) || \
           defined(FREESCALE_MQX)
         typedef unsigned int  THREAD_RETURN;
@@ -1587,8 +1627,6 @@ typedef struct w64wrapper {
          *                      to check if the value is an invalid thread
          * WOLFSSL_THREAD - attribute that should be used to declare thread
          *                  callbacks
-         * WOLFSSL_THREAD_NO_JOIN - attribute that should be used to declare
-         *                          thread callbacks that don't require cleanup
          * WOLFSSL_COND - defined if this system supports signaling
          * COND_TYPE - type that should be passed into the signaling API
          * WOLFSSL_THREAD_VOID_RETURN - defined if the thread callback has a
@@ -1596,8 +1634,16 @@ typedef struct w64wrapper {
          * WOLFSSL_RETURN_FROM_THREAD - define used to correctly return from a
          *                              thread callback
          * THREAD_CB - thread callback type for regular threading API
-         * THREAD_CB_NOJOIN - thread callback type for threading API that don't
+         *
+         * WOLFSSL_THREAD_NO_JOIN - attribute used to declare thread callbacks
+         *                          that do not require cleanup
+         * THREAD_CB_NOJOIN - thread callback type for thread APIs that do not
          *                    require cleanup
+         * THREAD_RETURN_NOJOIN - return type used to declare thread callbacks
+         *                        that do not require cleanup
+         * RETURN_FROM_THREAD_NOJOIN - define used to correctly return from
+         *                             a thread callback that do not require
+         *                             cleanup
          *
          * Other defines/types are specific for the threading implementation
          */
@@ -1620,8 +1666,17 @@ typedef struct w64wrapper {
             /* Create a thread that will be automatically cleaned up. We can't
              * return a handle/pointer to the new thread because there are no
              * guarantees for how long it will be valid. */
-            typedef THREAD_RETURN (WOLFSSL_THREAD_NO_JOIN *THREAD_CB_NOJOIN)
-                    (void* arg);
+            #if defined(WOLFSSL_PTHREADS)
+                #define THREAD_CB_NOJOIN        THREAD_CB
+                #define THREAD_RETURN_NOJOIN    THREAD_RETURN
+                #define RETURN_FROM_THREAD_NOJOIN(x) \
+                    WOLFSSL_RETURN_FROM_THREAD(x)
+            #else
+                #define THREAD_RETURN_NOJOIN    void
+                typedef THREAD_RETURN_NOJOIN
+                    (WOLFSSL_THREAD_NO_JOIN *THREAD_CB_NOJOIN)(void* arg);
+                #define RETURN_FROM_THREAD_NOJOIN(x)    return
+            #endif
             WOLFSSL_API int wolfSSL_NewThreadNoJoin(THREAD_CB_NOJOIN cb,
                     void* arg);
         #endif
