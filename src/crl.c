@@ -48,6 +48,8 @@ CRL Options:
     #include <string.h>
 #endif
 
+#include <stddef.h>
+
 #ifdef HAVE_CRL_MONITOR
     #if defined(__MACH__) || defined(__FreeBSD__) || defined(__linux__) || \
          defined(_MSC_VER)
@@ -898,7 +900,7 @@ static RevokedCert *DupRevokedCertList(RevokedCert* in, void* heap)
 static CRL_Entry* DupCRL_Entry(const CRL_Entry* ent, void* heap)
 {
     CRL_Entry *dupl;
-    const size_t copyOffset = OFFSETOF(CRL_Entry, verifyMutex) +
+    const size_t copyOffset = offsetof(CRL_Entry, verifyMutex) +
             sizeof(ent->verifyMutex);
 #ifdef CRL_STATIC_REVOKED_LIST
     if (ent->totalCerts > CRL_MAX_REVOKED_CERTS) {

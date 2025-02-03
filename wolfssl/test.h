@@ -37,6 +37,11 @@
 
 #include <wolfssl/wolfcrypt/wc_port.h>
 
+#if defined(__WATCOMC__) && defined(__OS2__)
+    #define NO_WOLFSSL_CLIENT
+    #define NO_WOLFSSL_SERVER
+#endif
+
 #ifdef FUSION_RTOS
     #include <fclstdio.h>
     #include <fclstdlib.h>
@@ -1440,7 +1445,8 @@ static WC_INLINE void tcp_socket(SOCKET_T* sockfd, int udp, int sctp)
     }
 
 #ifndef USE_WINDOWS_API
-#ifdef SO_NOSIGPIPE
+#if defined(__WATCOMC__) && defined(__OS2__)
+#elif defined(SO_NOSIGPIPE)
     {
         int       on = 1;
         socklen_t len = sizeof(on);
@@ -1449,7 +1455,7 @@ static WC_INLINE void tcp_socket(SOCKET_T* sockfd, int udp, int sctp)
             err_sys_with_errno("setsockopt SO_NOSIGPIPE failed\n");
     }
 #elif defined(WOLFSSL_MDK_ARM) || defined (WOLFSSL_TIRTOS) ||\
-                        defined(WOLFSSL_KEIL_TCP_NET) || defined(WOLFSSL_ZEPHYR)
+    defined(WOLFSSL_KEIL_TCP_NET) || defined(WOLFSSL_ZEPHYR)
     /* nothing to define */
 #elif defined(NETOS)
     /* TODO: signal(SIGPIPE, SIG_IGN); */
@@ -1521,7 +1527,7 @@ static WC_INLINE int tcp_select_ex(SOCKET_T socketfd, int to_sec, int rx)
     fd_set* recvfds = NULL;
     fd_set* sendfds = NULL;
     SOCKET_T nfds = socketfd + 1;
-#if !defined(__INTEGRITY)
+#if !defined(__INTEGRITY) && !defined(__WATCOMC__)
     struct timeval timeout = {(to_sec > 0) ? to_sec : 0, 0};
 #else
     struct timeval timeout;
@@ -1538,8 +1544,9 @@ static WC_INLINE int tcp_select_ex(SOCKET_T socketfd, int to_sec, int rx)
     else
         sendfds = &fds;
 
-#if defined(__INTEGRITY)
-    timeout.tv_sec = (long long)(to_sec > 0) ? to_sec : 0, 0;
+#if defined(__INTEGRITY) || defined(__WATCOMC__)
+    timeout.tv_sec = (long long)(to_sec > 0) ? to_sec : 0;
+    timeout.tv_usec = 0;
 #endif
     result = select(nfds, recvfds, sendfds, &errfds, &timeout);
 
@@ -2131,6 +2138,7 @@ static WC_INLINE unsigned int my_psk_client_cs_cb(WOLFSSL* ssl,
 #elif defined(USE_WINDOWS_API)
 
     #define WIN32_LEAN_AND_MEAN
+    #define _WINSOCKAPI_
     #include <windows.h>
 
     static WC_INLINE double current_time(int reset)
@@ -4508,7 +4516,7 @@ static WC_INLINE int SimulateWantWriteIOSendCb(WOLFSSL *ssl, char *buf, int sz, 
 #endif /* USE_WOLFSSL_IO */
 
 #if defined(__hpux__) || defined(__MINGW32__) || defined (WOLFSSL_TIRTOS) \
-                      || defined(_MSC_VER)
+                      || defined(_MSC_VER) || defined(__WATCOMC__)
 
 /* HP/UX doesn't have strsep, needed by test/suites.c */
 static WC_INLINE char* strsep(char **stringp, const char *delim)

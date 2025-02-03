@@ -25,6 +25,8 @@
 
 #include <wolfssl/wolfcrypt/settings.h>
 
+#include <stddef.h>
+
 /*
  * WOLFSSL_SMALL_CERT_VERIFY:
  *     Verify the certificate signature without using DecodedCert. Doubles up
@@ -9452,7 +9454,7 @@ static void DtlsMsgAssembleCompleteMessage(DtlsMsg* msg)
      * alignment of char.
      */
     dtls = (DtlsHandShakeHeader*)(void *)((char *)msg->fragBucketList
-                                          + OFFSETOF(DtlsFragBucket,buf)
+                                          + offsetof(DtlsFragBucket,buf)
                                           - DTLS_HANDSHAKE_HEADER_SZ);
 
     msg->fragBucketList = NULL;
@@ -11916,7 +11918,7 @@ static int GetRecordHeader(WOLFSSL* ssl, word32* inOutIdx,
                              (!ssl->options.dtls &&
                               rh->pvMinor < ssl->version.minor))
         #else
-                            rh->pvMinor < ssl->version.minor
+                            (rh->pvMinor < ssl->version.minor)
         #endif
                    )) {
             WOLFSSL_MSG("SSL version error");

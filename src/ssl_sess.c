@@ -26,6 +26,8 @@
 
 #include <wolfssl/wolfcrypt/settings.h>
 
+#include <stddef.h>
+
 #if !defined(WOLFSSL_SSL_SESS_INCLUDED)
     #ifndef WOLFSSL_IGNORE_FILE_WARN
         #warning ssl_sess.c does not need to be compiled separately from ssl.c
@@ -3757,7 +3759,7 @@ static int wolfSSL_DupSessionEx(const WOLFSSL_SESSION* input,
     word16 ticLenAlloc = 0;
     byte *ticBuff = NULL;
 #endif
-    const size_t copyOffset = OFFSETOF(WOLFSSL_SESSION, heap) +
+    const size_t copyOffset = offsetof(WOLFSSL_SESSION, heap) +
         sizeof(input->heap);
     int ret = WOLFSSL_SUCCESS;
 
