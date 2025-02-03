@@ -406,9 +406,7 @@ typedef struct w64wrapper {
 
     /* set up thread local storage if available */
     #ifdef HAVE_THREAD_LS
-        #if defined(_MSC_VER)
-            #define THREAD_LS_T __declspec(thread)
-        #elif defined(__WATCOMC__)
+        #if defined(_MSC_VER) || defined(__WATCOMC__)
             #define THREAD_LS_T __declspec(thread)
         /* Thread local storage only in FreeRTOS v8.2.1 and higher */
         #elif defined(FREERTOS) || defined(FREERTOS_TCP) || \
@@ -999,7 +997,10 @@ typedef struct w64wrapper {
     #endif
 
     #ifndef OFFSETOF
-        #if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ >= 4))
+        #ifdef __WATCOMC__
+            #include <stddef.h>
+            #define OFFSETOF(type, field) offsetof(type, field)
+        #elif defined(__clang__) || (defined(__GNUC__) && (__GNUC__ >= 4))
             #define OFFSETOF(type, field) __builtin_offsetof(type, field)
         #else
             #define OFFSETOF(type, field) ((size_t)&(((type *)0)->field))
@@ -1478,6 +1479,46 @@ typedef struct w64wrapper {
          * wolfSSL_JoinThread() and wolfSSL_Cond signaling if they want.
          * Otherwise, those functions are omitted.
         */
+    #elif defined(__WATCOMC__)
+        #if __WATCOMC__ < 1300
+            #define _WCCALLBACK
+        #endif
+        #if defined(__NT__)
+            typedef unsigned      THREAD_RETURN;
+            typedef uintptr_t     THREAD_TYPE;
+            typedef struct COND_TYPE {
+                wolfSSL_Mutex mutex;
+                HANDLE cond;
+            } COND_TYPE;
+            #define WOLFSSL_COND
+            #define INVALID_THREAD_VAL ((THREAD_TYPE)(INVALID_HANDLE_VALUE))
+            #define WOLFSSL_THREAD __stdcall
+            #define WOLFSSL_THREAD_NO_JOIN _WCCALLBACK
+        #elif defined(__OS2__)
+            typedef void          THREAD_RETURN;
+            typedef TID           THREAD_TYPE;
+            typedef struct COND_TYPE {
+                wolfSSL_Mutex mutex;
+                LHANDLE cond;
+            } COND_TYPE;
+            #define WOLFSSL_COND
+            #define INVALID_THREAD_VAL ((THREAD_TYPE)(-1))
+            #define WOLFSSL_THREAD _WCCALLBACK
+            #define WOLFSSL_THREAD_NO_JOIN _WCCALLBACK
+        #elif defined(__LINUX__)
+            #include <pthread.h>
+            typedef struct COND_TYPE {
+                pthread_mutex_t mutex;
+                pthread_cond_t cond;
+            } COND_TYPE;
+            typedef void*         THREAD_RETURN;
+            typedef pthread_t     THREAD_TYPE;
+            #define WOLFSSL_COND
+            #define WOLFSSL_THREAD
+            #ifndef HAVE_SELFTEST
+                #define WOLFSSL_THREAD_NO_JOIN
+            #endif
+        #endif
     #elif defined(WOLFSSL_MDK_ARM) || defined(WOLFSSL_KEIL_TCP_NET) || \
           defined(FREESCALE_MQX)
         typedef unsigned int  THREAD_RETURN;
@@ -1555,9 +1596,7 @@ typedef struct w64wrapper {
         #define WOLFSSL_COND
         #define INVALID_THREAD_VAL ((THREAD_TYPE)(INVALID_HANDLE_VALUE))
         #define WOLFSSL_THREAD __stdcall
-        #if defined(__WATCOMC__)
-            #define WOLFSSL_THREAD_NO_JOIN __watcall
-        #elif !defined(__MINGW32__)
+        #if !defined(__MINGW32__)
             #define WOLFSSL_THREAD_NO_JOIN __cdecl
         #endif
     #elif defined(THREADX)

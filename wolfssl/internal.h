@@ -151,7 +151,18 @@
     #include <signal.h>
 #endif
 
-#ifdef USE_WINDOWS_API
+#ifdef __WATCOMC__
+    #if defined(__OS2__)
+    #elif defined(__NT__)
+        #define _WINSOCKAPI_
+        #include <windows.h>
+    #elif defined(__LINUX__)
+        #ifndef SINGLE_THREADED
+            #define WOLFSSL_PTHREADS
+            #include <pthread.h>
+        #endif
+    #endif
+#elif defined(USE_WINDOWS_API)
     #ifdef WOLFSSL_GAME_BUILD
         #include "system/xtl.h"
     #else
@@ -229,7 +240,7 @@
     #endif
     #if defined(OPENSSL_EXTRA) && !defined(NO_FILESYSTEM)
         #ifdef FUSION_RTOS
-           #include <fclunistd.h>
+            #include <fclunistd.h>
         #else
             #include <unistd.h>      /* for close of BIO */
         #endif

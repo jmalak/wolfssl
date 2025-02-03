@@ -122,19 +122,29 @@
 /* THREADING/MUTEX SECTION */
 #if defined(__WATCOMC__)
     #if !defined(SINGLE_THREADED)
-        #if defined(WOLFSSL_PTHREADS)
-            #include <pthread.h>
-        #else
-            #if defined(USE_WINDOWS_API)
-                #define _WINSOCKAPI_
-                #include <windows.h>
-            #endif
+        #if defined(USE_WINDOWS_API)
+            #define _WINSOCKAPI_
+            #include <windows.h>
             #include <process.h>
+        #elif defined(__OS2__)
+            #define INCL_DOSSEMAPHORES
+            #define INCL_DOSPROCESS
+            #include <os2.h>
+            #include <process.h>
+        #else
+            #ifndef WOLFSSL_USER_MUTEX
+                #define WOLFSSL_PTHREADS
+            #endif
+            #if defined(WOLFSSL_PTHREADS)
+                #include <pthread.h>
+            #endif
         #endif
     #else
         #if defined(USE_WINDOWS_API)
             #define _WINSOCKAPI_
             #include <windows.h>
+        #elif defined(__OS2__)
+            #include <os2.h>
         #endif
     #endif
 #elif defined(SINGLE_THREADED) && defined(NO_FILESYSTEM)
@@ -385,6 +395,9 @@
         /* typedef User_Mutex wolfSSL_Mutex; */
     #elif defined(WOLFSSL_LINUXKM)
         /* definitions are in linuxkm/linuxkm_wc_port.h */
+    #elif defined(__WATCOMC__)
+        /* OS/2 */
+        typedef ULONG wolfSSL_Mutex;
     #else
         #error Need a mutex type in multithreaded mode
     #endif /* USE_WINDOWS_API */
