@@ -2434,6 +2434,7 @@ elseif (WIN32 OR ${CMAKE_SYSTEM_NAME} MATCHES "^MSYS" OR ${CMAKE_SYSTEM_NAME} MA
     message("Building on Windows/MSYS/MINGW")
     target_link_libraries(wolfssl PUBLIC
         ws2_32 crypt32 advapi32)
+elseif(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
 elseif(APPLE)
     message("Building on Apple")
     if(WOLFSSL_SYS_CA_CERTS)
