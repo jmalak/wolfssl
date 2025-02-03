@@ -1624,9 +1624,7 @@ typedef struct w64wrapper {
         #define WOLFSSL_COND
         #define INVALID_THREAD_VAL ((THREAD_TYPE)(INVALID_HANDLE_VALUE))
         #define WOLFSSL_THREAD __stdcall
-        #if defined(__WATCOMC__)
-            #define WOLFSSL_THREAD_NO_JOIN __watcall
-        #elif !defined(__MINGW32__)
+        #if !defined(__MINGW32__)
             #define WOLFSSL_THREAD_NO_JOIN __cdecl
         #endif
     #elif defined(THREADX)
