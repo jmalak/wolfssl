@@ -294,13 +294,7 @@ if(NOT WOLFSSL_SINGLE_THREADED)
     if(CMAKE_USE_PTHREADS_INIT)
         list(APPEND WOLFSSL_LINK_LIBS Threads::Threads)
         set(HAVE_PTHREAD 1)
-        list(APPEND WOLFSSL_DEFINITIONS
-            "-DHAVE_PTHREAD"
-            "-D_POSIX_THREADS")
-#    elseif(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom" AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
-#        set(HAVE_PTHREAD 1)
-#        list(APPEND WOLFSSL_DEFINITIONS
-#            "-DHAVE_PTHREAD")
+        list(APPEND WOLFSSL_DEFINITIONS "-DHAVE_PTHREAD")
     endif()
 else()
     list(APPEND WOLFSSL_DEFINITIONS "-DSINGLE_THREADED")
@@ -2775,20 +2769,20 @@ if(WOLFSSL_INSTALL)
 
     if(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
     else()
-      # Setting libm in Libs.private of wolfssl.pc.
-      # See "Link Libraries" in above about `m` insertion to LINK_LIBRARIES
-      get_target_property(_wolfssl_dep_libs wolfssl LINK_LIBRARIES)
-      list(FIND _wolfssl_dep_libs m _dep_libm)
-      if ("${_dep_libm}" GREATER -1)
-        set(LIBM -lm)
-      else()
-        set(LIBM)
-      endif()
-
-      configure_file(support/wolfssl.pc.in ${CMAKE_CURRENT_BINARY_DIR}/support/wolfssl.pc @ONLY)
-      install(FILES ${CMAKE_CURRENT_BINARY_DIR}/support/wolfssl.pc
-      DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+        # Setting libm in Libs.private of wolfssl.pc.
+        # See "Link Libraries" in above about `m` insertion to LINK_LIBRARIES
+        get_target_property(_wolfssl_dep_libs wolfssl LINK_LIBRARIES)
+        list(FIND _wolfssl_dep_libs m _dep_libm)
+        if ("${_dep_libm}" GREATER -1)
+            set(LIBM -lm)
+        else()
+            set(LIBM)
+        endif()
     endif()
+
+    configure_file(support/wolfssl.pc.in ${CMAKE_CURRENT_BINARY_DIR}/support/wolfssl.pc @ONLY)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/support/wolfssl.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
     include(CMakePackageConfigHelpers)
     configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Config.cmake.in
