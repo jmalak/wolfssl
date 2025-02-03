@@ -998,8 +998,9 @@ typedef struct w64wrapper {
 
     #ifndef OFFSETOF
         #ifdef __WATCOMC__
-            #include <stddef.h>
-            #define OFFSETOF(type, field) offsetof(type, field)
+            /* macro from watcom c offsetof in stddef.h */
+            #define OFFSETOF(__typ, __id) \
+                ((size_t)((char *)&(((__typ*)0)->__id) - (char *)0))
         #elif defined(__clang__) || (defined(__GNUC__) && (__GNUC__ >= 4))
             #define OFFSETOF(type, field) __builtin_offsetof(type, field)
         #else
