@@ -419,7 +419,9 @@ typedef struct w64wrapper {
 
     /* set up thread local storage if available */
     #ifdef HAVE_THREAD_LS
-        #if defined(_MSC_VER) || defined(__WATCOMC__)
+        #if defined(_MSC_VER)
+            #define THREAD_LS_T __declspec(thread)
+        #elif defined(__WATCOMC__)
             #define THREAD_LS_T __declspec(thread)
         #elif defined(__WATCOMC__)
             #define THREAD_LS_T __declspec(thread)
@@ -1512,9 +1514,6 @@ typedef struct w64wrapper {
          * Otherwise, those functions are omitted.
         */
     #elif defined(__WATCOMC__)
-        #if __WATCOMC__ < 1300
-            #define _WCCALLBACK
-        #endif
         #if defined(__NT__)
             typedef unsigned      THREAD_RETURN;
             typedef uintptr_t     THREAD_TYPE;
@@ -1525,7 +1524,11 @@ typedef struct w64wrapper {
             #define WOLFSSL_COND
             #define INVALID_THREAD_VAL ((THREAD_TYPE)(INVALID_HANDLE_VALUE))
             #define WOLFSSL_THREAD __stdcall
-            #define WOLFSSL_THREAD_NO_JOIN _WCCALLBACK
+            #if __WATCOMC__ < 1300
+                #define WOLFSSL_THREAD_NO_JOIN
+            #else
+                #define WOLFSSL_THREAD_NO_JOIN _WCCALLBACK
+            #endif
         #elif defined(__OS2__)
             #define WOLFSSL_THREAD_VOID_RETURN
             typedef void          THREAD_RETURN;
@@ -1536,8 +1539,13 @@ typedef struct w64wrapper {
             } COND_TYPE;
             #define WOLFSSL_COND
             #define INVALID_THREAD_VAL ((THREAD_TYPE)(-1))
-            #define WOLFSSL_THREAD _WCCALLBACK
-            #define WOLFSSL_THREAD_NO_JOIN _WCCALLBACK
+            #if __WATCOMC__ < 1300
+                #define WOLFSSL_THREAD
+                #define WOLFSSL_THREAD_NO_JOIN
+            #else
+                #define WOLFSSL_THREAD _WCCALLBACK
+                #define WOLFSSL_THREAD_NO_JOIN _WCCALLBACK
+            #endif
         #elif defined(__LINUX__)
             #include <pthread.h>
             typedef struct COND_TYPE {
@@ -1547,7 +1555,7 @@ typedef struct w64wrapper {
             typedef void*         THREAD_RETURN;
             typedef pthread_t     THREAD_TYPE;
             #define WOLFSSL_COND
-            #define WOLFSSL_THREAD
+            #define WOLFSSL_THREAD _WCCALLBACK
             #ifndef HAVE_SELFTEST
                 #define WOLFSSL_THREAD_NO_JOIN
             #endif

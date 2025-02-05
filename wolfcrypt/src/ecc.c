@@ -11444,11 +11444,13 @@ int wc_ecc_rs_to_sig(const char* r, const char* s, byte* out, word32* outlen)
         if (mp_iszero(rtmp) == MP_YES || mp_iszero(stmp) == MP_YES)
             err = MP_ZERO_E;
     }
+#if !defined(WOLFSSL_SP_MATH_ALL) || defined(WOLFSSL_SP_INT_NEGATIVE)
     if (err == MP_OKAY) {
         if (mp_isneg(rtmp) == MP_YES || mp_isneg(stmp) == MP_YES) {
             err = MP_READ_E;
         }
     }
+#endif
 
     /* convert mp_ints to ECDSA sig, initializes rtmp and stmp internally */
     if (err == MP_OKAY)
