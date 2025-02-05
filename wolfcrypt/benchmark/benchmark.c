@@ -15010,6 +15010,26 @@ void bench_sphincsKeySign(byte level, byte optim)
     #include <time.h>
     #include <sys/time.h>
 
+    #if defined(__WATCOMC__) && (__WATCOMC__ < 1300) && defined(__LINUX__)
+
+        #define SYS_clock_gettime       265
+
+        unsigned sys_call2( u_long func, u_long r_ebx, u_long r_ecx );
+        #pragma aux sys_call2 = \
+            "int    0x80"   \
+            __parm [__eax] [__ebx] [__ecx] __value [__eax]
+
+        int clock_gettime( clockid_t __clk, struct timespec *__ts)
+        {
+            unsigned res = sys_call2( SYS_clock_gettime, (u_long)__clk, (u_long)__ts );
+            if( res >= (unsigned)(-125) ) {
+                errno = -res;
+                return( -1 );
+            }
+            return( res );
+        }
+    #endif
+
     double current_time(int reset)
     {
         struct timespec tv;
