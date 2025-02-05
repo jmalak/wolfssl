@@ -1890,7 +1890,9 @@ else()
 endif()
 
 if(WOLFSSL_ASYNC_THREADS)
-    list(APPEND WOLFSSL_LINK_LIBS Threads::Threads)
+    if(CMAKE_USE_PTHREADS_INIT)
+        list(APPEND WOLFSSL_LINK_LIBS Threads::Threads)
+    endif()
     list(APPEND WOLFSSL_DEFINITIONS "-D_GNU_SOURCE")
 else()
     list(APPEND WOLFSSL_DEFINITIONS "-DWC_NO_ASYNC_THREADING")
@@ -2416,18 +2418,21 @@ target_include_directories(wolfssl
 
 target_link_libraries(wolfssl PUBLIC ${WOLFSSL_LINK_LIBS})
 
-if(WIN32)
-    # For Windows link ws2_32
+if (WIN32 OR ${CMAKE_SYSTEM_NAME} MATCHES "^MSYS" OR ${CMAKE_SYSTEM_NAME} MATCHES "^MINGW")
+    # For Windows link required libraries
+    message("Building on Windows/MSYS/MINGW")
     target_link_libraries(wolfssl PUBLIC
-        $<$<PLATFORM_ID:Windows>:ws2_32 crypt32 advapi32>)
+        ws2_32 crypt32 advapi32)
 elseif(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
 elseif(APPLE)
+    message("Building on Apple")
     if(WOLFSSL_SYS_CA_CERTS)
         target_link_libraries(wolfssl PUBLIC
             ${CORE_FOUNDATION_FRAMEWORK}
             ${SECURITY_FRAMEWORK})
     endif()
 else()
+    message("Building on Linux (or other)")
     if(WOLFSSL_DH AND NOT WOLFSSL_DH_CONST)
         # DH requires math (m) library
         target_link_libraries(wolfssl
@@ -2484,7 +2489,9 @@ if(WOLFSSL_EXAMPLES)
         add_executable(tls_bench
             ${CMAKE_CURRENT_SOURCE_DIR}/examples/benchmark/tls_bench.c)
         target_link_libraries(tls_bench wolfssl)
-        target_link_libraries(tls_bench Threads::Threads)
+        if(CMAKE_USE_PTHREADS_INIT)
+            target_link_libraries(tls_bench Threads::Threads)
+        endif()
         set_property(TARGET tls_bench
                  PROPERTY RUNTIME_OUTPUT_DIRECTORY
                  ${WOLFSSL_OUTPUT_BASE}/examples/benchmark)
@@ -2493,6 +2500,7 @@ if(WOLFSSL_EXAMPLES)
     # Build unit tests
     add_executable(unit_test
         tests/api.c
+        tests/api/ascon.c
         tests/hash.c
         tests/srp.c
         tests/suites.c
@@ -2505,7 +2513,9 @@ if(WOLFSSL_EXAMPLES)
         ${CMAKE_CURRENT_BINARY_DIR})
     target_compile_options(unit_test PUBLIC "-DNO_MAIN_DRIVER")
     target_link_libraries(unit_test wolfssl)
-    target_link_libraries(unit_test Threads::Threads)
+    if(CMAKE_USE_PTHREADS_INIT)
+        target_link_libraries(unit_test Threads::Threads)
+    endif()
     set_property(TARGET unit_test
                  PROPERTY RUNTIME_OUTPUT_DIRECTORY
                  ${WOLFSSL_OUTPUT_BASE}/tests/)
