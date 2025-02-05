@@ -21,24 +21,26 @@ jobs:
         common:
           - cmake:    '-G "Watcom WMake" -DCMAKE_VERBOSE_MAKEFILE=TRUE -DWOLFSSL_ASM=no -DWOLFSSL_EXAMPLES=no -DWOLFSSL_CRYPT_TESTS=no'
         platform:
-          - title:   'Windows OW 2.0'
+          - title:   'Windows OW'
             system:   'Windows'
             image:    'windows-latest'
-            owimage:  '2.0'
-            id:       'win32ow20'
+            id:       'win32ow'
             cmake:    '-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_SYSTEM_PROCESSOR=x86'
-          - title:   'Linux OW 2.0'
+          - title:   'Linux OW'
             system:   'Linux'
             image:    'ubuntu-latest'
-            owimage:  '2.0'
-            id:       'linuxow20'
+            id:       'linuxow'
             cmake:    '-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=x86'
-          - title:   'OS/2 OW 2.0'
+          - title:   'OS/2 OW'
             system:   'OS2'
             image:    'windows-latest'
-            owimage:  '2.0'
-            id:       'os2ow20'
+            id:       'os2ow'
             cmake:    '-DCMAKE_SYSTEM_NAME=OS2 -DCMAKE_SYSTEM_PROCESSOR=x86'
+        owimage:
+          - ver:      '1.9'
+            id:       '19'
+          - ver:      '2.0'
+            id:       '20'
         thread:
           - id:       'multi'
             cmake:    ''
@@ -55,13 +57,14 @@ jobs:
             owcmake:  ''
         exclude:
           - { platform: { system: 'Linux' }, library: { id: 'dll' } }
+          - { platform: { system: 'Linux' }, owimage: { ver: '1.9' }, thread: { id: 'multi' } }
     runs-on: ${{ matrix.platform.image }}
-    name: ${{ matrix.platform.title }} (${{ matrix.thread.id }} ${{ matrix.library.id }})
+    name: ${{ matrix.platform.title }} ${{ matrix.owimage.ver }} (${{ matrix.thread.id }} ${{ matrix.library.id }})
     steps:
-      - name: Setup Open Watcom ${{ matrix.platform.owimage }}
+      - name: Setup Open Watcom ${{ matrix.owimage.ver }}
         uses: open-watcom/setup-watcom@v0
         with:
-          version: ${{ matrix.platform.owimage }}
+          version: ${{ matrix.owimage.ver }}
 
       - name: Checkout wolfSSL
         uses: actions/checkout@v4
@@ -79,6 +82,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.platform.id }}-${{ matrix.thread.id }}-${{ matrix.library.id }}
+          name: ${{ matrix.platform.id }}-${{ matrix.owimage.id }}-${{ matrix.thread.id }}-${{ matrix.library.id }}
           path: |
             build/**

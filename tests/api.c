@@ -5322,8 +5322,6 @@ static int test_wolfSSL_CTX_SetMinMaxDhKey_Sz(void)
     (!defined(NO_WOLFSSL_CLIENT) || !defined(NO_WOLFSSL_SERVER))
     WOLFSSL_CTX *ctx;
 
-    (void)ctx;
-
   #ifndef NO_WOLFSSL_CLIENT
     ctx = wolfSSL_CTX_new(wolfSSLv23_client_method());
   #else
@@ -81878,7 +81876,7 @@ static int test_tls13_apis(void)
     EXPECT_DECLS;
 #if defined(HAVE_SUPPORTED_CURVES) && defined(HAVE_ECC) && \
     (!defined(NO_WOLFSSL_SERVER) || !defined(NO_WOLFSSL_CLIENT))
-     int          ret;
+    int          ret;
 #endif
 #ifndef WOLFSSL_NO_TLS12
 #ifndef NO_WOLFSSL_CLIENT
