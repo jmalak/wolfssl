@@ -86,12 +86,17 @@
 #endif /*HAVE_PK_CALLBACKS */
 
 #ifdef USE_WINDOWS_API
-    #include <winsock2.h>
-    #include <process.h>
-    #ifdef TEST_IPV6            /* don't require newer SDK for IPV4 */
-        #include <ws2tcpip.h>
-        #include <wspiapi.h>
-    #endif
+    #ifdef WOLFSSL_IPV6
+        #include <winsock2.h>
+        #include <process.h>
+        #ifdef TEST_IPV6            /* don't require newer SDK for IPV4 */
+            #include <ws2tcpip.h>
+            #include <wspiapi.h>
+        #endif
+    #else
+        #include <winsock.h>
+        #include <process.h>
+    #endif /* WOLFSSL_IPV6 */
     #define SOCKET_T SOCKET
     #define SNPRINTF _snprintf
     #define XSLEEP_MS(t) Sleep(t)
@@ -1603,7 +1608,11 @@ static WC_INLINE void tcp_listen(SOCKET_T* sockfd, word16* port, int useAnyAddr,
 #endif
 #endif
 
+#if defined(__WATCOMC__) && (__WATCOMC__ < 1300)
+    if (bind(*sockfd, (struct sockaddr*)&addr, sizeof(addr)) != 0)
+#else
     if (bind(*sockfd, (const struct sockaddr*)&addr, sizeof(addr)) != 0)
+#endif
         err_sys_with_errno("tcp bind failed");
     if (!udp) {
         #ifdef WOLFSSL_KEIL_TCP_NET
@@ -1683,7 +1692,11 @@ static WC_INLINE void udp_accept(SOCKET_T* sockfd, SOCKET_T* clientfd,
 #endif
 #endif
 
+#if defined(__WATCOMC__) && (__WATCOMC__ < 1300)
+    if (bind(*sockfd, (struct sockaddr*)&addr, sizeof(addr)) != 0)
+#else
     if (bind(*sockfd, (const struct sockaddr*)&addr, sizeof(addr)) != 0)
+#endif
         err_sys_with_errno("tcp bind failed");
 
     #if !defined(USE_WINDOWS_API) && !defined(WOLFSSL_TIRTOS) && \

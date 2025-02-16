@@ -58065,14 +58065,19 @@ WOLFSSL_TEST_SUBROUTINE wc_test_ret_t berder_test(void)
     };
     WOLFSSL_SMALL_STACK_STATIC const byte good5_in[] = { 0x30, 0x03, 0x02, 0x01, 0x01 };
 
-    berDerTestData testData[] = {
-        { good1_in, sizeof(good1_in), good1_out, sizeof(good1_out) },
-        { good2_in, sizeof(good2_in), good2_out, sizeof(good2_out) },
-        { good3_in, sizeof(good3_in), good3_out, sizeof(good3_out) },
-        { good4_in, sizeof(good4_in), good4_out, sizeof(good4_out) },
-        { good5_in, sizeof(good5_in), good5_in , sizeof(good5_in ) },
-    };
+    berDerTestData testData[5];
+
     WOLFSSL_ENTER("berder_test");
+
+    #define INIT_DATA(n,xi,xo) \
+        testData[n].in = xi; testData[n].inSz = sizeof(xi); \
+        testData[n].out = xo; testData[n].outSz = sizeof(xo)
+
+    INIT_DATA(0,good1_in,good1_out);
+    INIT_DATA(1,good2_in,good2_out);
+    INIT_DATA(2,good3_in,good3_out);
+    INIT_DATA(3,good4_in,good4_out);
+    INIT_DATA(4,good5_in,good5_in);
 
     for (i = 0; i < (int)(sizeof(testData) / sizeof(*testData)); i++) {
         ret = wc_BerToDer(testData[i].in, testData[i].inSz, NULL, &len);

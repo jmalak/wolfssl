@@ -52,7 +52,11 @@ int Nucleus_Net_Errno;
 
 #if defined(USE_WOLFSSL_IO) || defined(HAVE_HTTP_CLIENT)
     #ifdef USE_WINDOWS_API
-        #include <winsock2.h>
+        #if defined(WOLFSSL_IPV6)
+            #include <winsock2.h>
+        #else
+            #include <winsock.h>
+        #endif
     #else
         #if defined(WOLFSSL_LWIP) && !defined(WOLFSSL_APACHE_MYNEWT)
         #elif defined(ARDUINO)
@@ -1017,16 +1021,16 @@ int EmbedGenerateCookie(WOLFSSL* ssl, byte *buf, int sz, void *ctx)
                 *port = XNTOHS(((SOCKADDR_IN*)&peer)->sin_port);
                 break;
 
-            case WOLFSSL_IP6:
             #ifdef WOLFSSL_IPV6
+            case WOLFSSL_IP6:
                 if (XINET_NTOP(*fam, &(((SOCKADDR_IN6*)&peer)->sin6_addr),
                                                            ip, *ipSz) == NULL) {
                     WOLFSSL_MSG("XINET_NTOP error");
                     return SOCKET_ERROR_E;
                 }
                 *port = XNTOHS(((SOCKADDR_IN6*)&peer)->sin6_port);
-            #endif /* WOLFSSL_IPV6 */
                 break;
+            #endif /* WOLFSSL_IPV6 */
 
             default:
                 WOLFSSL_MSG("Unknown family type");
@@ -1067,8 +1071,8 @@ int EmbedGenerateCookie(WOLFSSL* ssl, byte *buf, int sz, void *ctx)
                 }
                 break;
 
-            case WOLFSSL_IP6:
             #ifdef WOLFSSL_IPV6
+            case WOLFSSL_IP6:
                 if (XINET_PTON(addr.ss_family, ip,
                                    &(((SOCKADDR_IN6*)&addr)->sin6_addr)) <= 0) {
                     WOLFSSL_MSG("XINET_PTON error");
@@ -1082,8 +1086,8 @@ int EmbedGenerateCookie(WOLFSSL* ssl, byte *buf, int sz, void *ctx)
                     WOLFSSL_MSG("Import DTLS peer info error");
                     return ret;
                 }
-            #endif /* WOLFSSL_IPV6 */
                 break;
+            #endif /* WOLFSSL_IPV6 */
 
             default:
                 WOLFSSL_MSG("Unknown address family");

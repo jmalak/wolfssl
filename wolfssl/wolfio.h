@@ -856,21 +856,29 @@ WOLFSSL_API void wolfSSL_SetIOWriteFlags(WOLFSSL* ssl, int flags);
 
 
 #ifndef XINET_NTOP
-    #define XINET_NTOP(a,b,c,d) inet_ntop((a),(b),(c),(d))
-    #ifdef USE_WINDOWS_API /* Windows-friendly definition */
-        #undef  XINET_NTOP
-        #define XINET_NTOP(a,b,c,d) InetNtop((a),(b),(c),(d))
+    #if defined(WOLFSSL_IPV6)
+        #ifdef USE_WINDOWS_API /* Windows-friendly definition */
+            #define XINET_NTOP(a,b,c,d) InetNtop((a),(b),(c),(d))
+        #else
+            #define XINET_NTOP(a,b,c,d) inet_ntop((a),(b),(c),(d))
+        #endif
+    #else
+        #define XINET_NTOP(a,b,c,d) strncpy(inet_ntoa(*(struct in_addr *)b),c, d)
     #endif
 #endif
 #ifndef XINET_PTON
-    #define XINET_PTON(a,b,c)   inet_pton((a),(b),(c))
-    #ifdef USE_WINDOWS_API /* Windows-friendly definition */
-        #undef  XINET_PTON
-        #if defined(__MINGW64__) && !defined(UNICODE)
-            #define XINET_PTON(a,b,c)   InetPton((a),(b),(c))
+    #if defined(WOLFSSL_IPV6)
+        #ifdef USE_WINDOWS_API /* Windows-friendly definition */
+            #if defined(__MINGW64__) && !defined(UNICODE)
+                #define XINET_PTON(a,b,c)   InetPton((a),(b),(c))
+            #else
+                #define XINET_PTON(a,b,c)   InetPton((a),(PCWSTR)(b),(c))
+            #endif
         #else
-            #define XINET_PTON(a,b,c)   InetPton((a),(PCWSTR)(b),(c))
+            #define XINET_PTON(a,b,c)   inet_pton((a),(b),(c))
         #endif
+    #else
+        #define XINET_PTON(a,b,c)   *(unsigned *)c = inet_addr(b), (*(unsigned *)c != (unsigned)-1)
     #endif
 #endif
 
@@ -902,9 +910,11 @@ WOLFSSL_API void wolfSSL_SetIOWriteFlags(WOLFSSL* ssl, int flags);
 #ifndef WOLFSSL_IP4
     #define WOLFSSL_IP4 AF_INET
 #endif
-#ifndef WOLFSSL_IP6
-    #define WOLFSSL_IP6 AF_INET6
-#endif
+#ifdef WOLFSSL_IPV6
+    #ifndef WOLFSSL_IP6
+        #define WOLFSSL_IP6 AF_INET6
+    #endif
+#endif /* WOLFSSL_IPV6 */
 
 
 #ifdef __cplusplus
