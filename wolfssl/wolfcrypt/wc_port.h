@@ -120,17 +120,36 @@
 #endif
 
 /* THREADING/MUTEX SECTION */
-#if defined(__WATCOMC__)
-    #if !defined(SINGLE_THREADED)
-        #if defined(USE_WINDOWS_API)
-            #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
-            #include <windows.h>
+#if defined(SINGLE_THREADED) && defined(NO_FILESYSTEM)
+    /* No system headers required for build. */
+#elif defined(__WATCOMC__)
+    #if defined(__NT__)
+        #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
+        #include <windows.h>
+        #undef _WINSOCKAPI_
+        #ifndef WOLFSSL_USER_IO
+            #ifdef WOLFSSL_IPV6
+                #include <winsock2.h>
+                #include <ws2tcpip.h> /* required for InetPton */
+            #else
+                #include <winsock.h>
+            #endif
+        #endif
+        #if defined(SINGLE_THREADED)
+        #else
             #include <process.h>
-        #elif defined(__OS2__)
+        #endif
+    #elif defined(__OS2__)
+        #if defined(SINGLE_THREADED)
+            #include <os2.h>
+        #else
             #define INCL_DOSSEMAPHORES
             #define INCL_DOSPROCESS
             #include <os2.h>
             #include <process.h>
+        #endif
+    #else
+        #if defined(SINGLE_THREADED)
         #else
             #ifndef WOLFSSL_USER_MUTEX
                 #define WOLFSSL_PTHREADS
@@ -139,16 +158,7 @@
                 #include <pthread.h>
             #endif
         #endif
-    #else
-        #if defined(USE_WINDOWS_API)
-            #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
-            #include <windows.h>
-        #elif defined(__OS2__)
-            #include <os2.h>
-        #endif
     #endif
-#elif defined(SINGLE_THREADED) && defined(NO_FILESYSTEM)
-    /* No system headers required for build. */
 #elif defined(USE_WINDOWS_API)
     #if defined(WOLFSSL_PTHREADS)
         #include <pthread.h>
@@ -925,7 +935,27 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
 
     #if !defined(NO_WOLFSSL_DIR)\
         && !defined(WOLFSSL_NUCLEUS) && !defined(WOLFSSL_NUCLEUS_1_2)
-        #if defined(USE_WINDOWS_API)
+        #if defined(__WATCOMC__)
+            #include <sys/stat.h>
+            #include <unistd.h>
+            #define XS_ISREG(s) S_ISREG(s)
+            #define XWRITE      write
+            #define XREAD       read
+            #define XCLOSE      close
+            #define XSTAT       stat
+            #ifndef NO_WOLFSSL_DIR
+                #if defined(__UNIX__)
+                    #include <dirent.h>
+                #else
+                    #include <direct.h>
+                #endif
+            #endif
+            #if defined(__UNIX__)
+                #define SEPARATOR_CHAR ':'
+            #else
+                #define SEPARATOR_CHAR ';'
+            #endif
+        #elif defined(USE_WINDOWS_API)
             #include <io.h>
             #include <sys/stat.h>
             #ifndef XSTAT

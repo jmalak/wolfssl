@@ -914,6 +914,13 @@ typedef struct w64wrapper {
             /* use only Thread Safe version of strtok */
             #if defined(USE_WOLF_STRTOK)
                 #define XSTRTOK(s1,d,ptr) wc_strtok((s1),(d),(ptr))
+            #elif defined(__WATCOMC__)
+                #if __WATCOMC__ < 1300
+                	#define USE_WOLF_STRTOK
+                    #define XSTRTOK(s1,d,ptr) wc_strtok((s1),(d),(ptr))
+                #else
+                    #define XSTRTOK(s1,d,ptr) strtok_r((s1),(d),(ptr))
+                #endif
             #elif defined(USE_WINDOWS_API) || defined(INTIME_RTOS)
                 #define XSTRTOK(s1,d,ptr) strtok_s((s1),(d),(ptr))
             #else
