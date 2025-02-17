@@ -21952,24 +21952,35 @@ unsigned long wolfSSL_ERR_peek_error_line_data(const char **file, int *line,
  */
 WOLFSSL_ASN1_STRING* wolfSSL_a2i_IPADDRESS(const char* ipa)
 {
-    int ipaSz = WOLFSSL_IP4_ADDR_LEN;
-    char buf[WOLFSSL_IP6_ADDR_LEN + 1]; /* plus 1 for terminator */
     int  af = WOLFSSL_IP4;
+    int ipaSz = WOLFSSL_IP4_ADDR_LEN;
+#ifdef WOLFSSL_IPV6
+    char buf[WOLFSSL_IP6_ADDR_LEN + 1]; /* plus 1 for terminator */
+#else
+    char buf[WOLFSSL_IP4_ADDR_LEN + 1]; /* plus 1 for terminator */
+#endif
     WOLFSSL_ASN1_STRING *ret = NULL;
 
     if (ipa == NULL)
         return NULL;
 
+#ifdef WOLFSSL_IPV6
     if (XSTRSTR(ipa, ":") != NULL) {
         af = WOLFSSL_IP6;
         ipaSz = WOLFSSL_IP6_ADDR_LEN;
     }
-
     buf[WOLFSSL_IP6_ADDR_LEN] = '\0';
     if (XINET_PTON(af, ipa, (void*)buf) != 1) {
         WOLFSSL_MSG("Error parsing IP address");
         return NULL;
     }
+#else
+    buf[WOLFSSL_IP4_ADDR_LEN] = '\0';
+    if (XINET_PTON(af, ipa, (void*)buf) != 1) {
+        WOLFSSL_MSG("Error parsing IP address");
+        return NULL;
+    }
+#endif
 
     ret = wolfSSL_ASN1_STRING_new();
     if (ret != NULL) {

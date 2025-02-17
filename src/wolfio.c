@@ -52,7 +52,7 @@ int Nucleus_Net_Errno;
 
 #if defined(USE_WOLFSSL_IO) || defined(HAVE_HTTP_CLIENT)
     #ifdef USE_WINDOWS_API
-        #include <winsock2.h>
+//        #include <winsock2.h>
     #else
         #if defined(WOLFSSL_LWIP) && !defined(WOLFSSL_APACHE_MYNEWT)
         #elif defined(ARDUINO)
