@@ -454,6 +454,16 @@
 #elif defined(WOLFSSL_SGX)
     #define SEND_FUNCTION send
     #define RECV_FUNCTION recv
+#elif defined(__WATCOMC__)
+    #define SEND_FUNCTION send
+    #define RECV_FUNCTION recv
+    #if !defined(WOLFSSL_NO_SOCK)
+        #if !defined(__NT__)
+            #if !defined(HAVE_SOCKADDR)
+                #define HAVE_SOCKADDR
+            #endif
+        #endif
+    #endif
 #else
     #define SEND_FUNCTION send
     #define RECV_FUNCTION recv
@@ -464,7 +474,13 @@
 
 #ifndef WOLFSSL_NO_SOCK
     #ifndef XSOCKLENT
-        #ifdef USE_WINDOWS_API
+        #ifdef __WATCOMC__
+            #if defined(__UNIX__)
+                #define XSOCKLENT socklen_t
+            #else
+                #define XSOCKLENT int
+            #endif
+        #elif defined(USE_WINDOWS_API)
             #define XSOCKLENT int
         #elif defined(NUCLEUS_PLUS_2_3)
             typedef int socklen_t;
@@ -483,9 +499,9 @@
 
     /* Socket Addr Support */
     #ifdef HAVE_SOCKADDR
-    #ifndef HAVE_SOCKADDR_DEFINED
-        typedef struct sockaddr         SOCKADDR;
-    #endif
+        #ifndef HAVE_SOCKADDR_DEFINED
+            typedef struct sockaddr     SOCKADDR;
+        #endif
         typedef struct sockaddr_storage SOCKADDR_S;
         typedef struct sockaddr_in      SOCKADDR_IN;
         #ifdef WOLFSSL_IPV6
@@ -493,7 +509,7 @@
         #endif
         #if defined(HAVE_SYS_UN_H) && !defined(WOLFSSL_NO_SOCKADDR_UN)
             #include <sys/un.h>
-            typedef struct sockaddr_un SOCKADDR_UN;
+            typedef struct sockaddr_un  SOCKADDR_UN;
         #endif
         typedef struct hostent          HOSTENT;
     #endif /* HAVE_SOCKADDR */
