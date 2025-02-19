@@ -14980,6 +14980,10 @@ void bench_sphincsKeySign(byte level, byte optim)
         return (double)us / 1000000.0;
     }
 
+#elif defined(__WATCOMC__) && ( (__WATCOMC__ < 1300) || defined(__OS2__) )
+
+    #include <time.h>
+    static WC_INLINE double current_time(int reset) { (void)reset; return ((double)clock())/CLK_TCK; }
 #else
 
     #include <time.h>
