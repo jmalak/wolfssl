@@ -3973,6 +3973,7 @@ char* mystrnstr(const char* s1, const char* s2, unsigned int n)
         if (cond == NULL)
             return BAD_FUNC_ARG;
     #if defined(__OS2__)
+        DosRequestMutexSem(cond->mutex, SEM_INDEFINITE_WAIT);
     #elif defined(__NT__)
         if (wc_LockMutex(&cond->mutex) != 0)
             return BAD_MUTEX_E;
@@ -3988,6 +3989,9 @@ char* mystrnstr(const char* s1, const char* s2, unsigned int n)
         if (cond == NULL)
             return BAD_FUNC_ARG;
     #if defined(__OS2__)
+        DosReleaseMutexSem(cond->mutex);
+        DosPostEventSem(cond->cond);
+        DosRequestMutexSem(cond->mutex, SEM_INDEFINITE_WAIT);
     #elif defined(__NT__)
         if (wc_UnLockMutex(&cond->mutex) != 0)
             return BAD_MUTEX_E;
@@ -4009,6 +4013,9 @@ char* mystrnstr(const char* s1, const char* s2, unsigned int n)
         if (cond == NULL)
             return BAD_FUNC_ARG;
     #if defined(__OS2__)
+        DosReleaseMutexSem(cond->mutex);
+        DosWaitEventSem(cond->cond,SEM_INDEFINITE_WAIT);
+        DosRequestMutexSem(cond->mutex, SEM_INDEFINITE_WAIT);
     #elif defined(__NT__)
         if (wc_UnLockMutex(&cond->mutex) != 0)
             return BAD_MUTEX_E;
@@ -4030,6 +4037,7 @@ char* mystrnstr(const char* s1, const char* s2, unsigned int n)
         if (cond == NULL)
             return BAD_FUNC_ARG;
     #if defined(__OS2__)
+        DosReleaseMutexSem(cond->mutex);
     #elif defined(__NT__)
         if (wc_UnLockMutex(&cond->mutex) != 0)
             return BAD_MUTEX_E;

@@ -5029,9 +5029,9 @@ int wolfSSL_GENERAL_NAME_print(WOLFSSL_BIO* out, WOLFSSL_GENERAL_NAME* gen)
     int ret, i;
     unsigned int wd;
     unsigned char* p;
-    (void)wd;
-    (void)p;
-    (void)i;
+//    (void)wd;
+//    (void)p;
+//    (void)i;
     WOLFSSL_ENTER("wolfSSL_GENERAL_NAME_print");
 
     if (out == NULL || gen == NULL)

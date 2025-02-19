@@ -2796,10 +2796,6 @@ extern void uITRON4_free(void *p) ;
     #define WOLFSSL_SP_NO_DYN_STACK
 #endif
 
-#if defined(__WATCOMC__) && !defined(WOLF_NO_VARIADIC_MACROS)
-    #define WOLF_NO_VARIADIC_MACROS
-#endif
-
 #ifdef __INTEL_COMPILER
     #pragma warning(disable:2259) /* explicit casts to smaller sizes, disable */
 #endif

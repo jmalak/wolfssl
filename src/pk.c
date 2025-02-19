@@ -11253,7 +11253,8 @@ static int wolfssl_ec_point_mul(int curveIdx, ecc_point* r, mp_int* n,
     mp_int* a = NULL;
     mp_int* prime = NULL;
 #else
-    mp_int a[1], prime[1];
+    mp_int a[1];
+    mp_int prime[1];
 #endif
 
 #ifdef WOLFSSL_SMALL_STACK

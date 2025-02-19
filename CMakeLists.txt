@@ -204,13 +204,9 @@ find_package(Threads)
 # Example for map file and custom linker script
 #set(CMAKE_EXE_LINKER_FLAGS " -Xlinker -Map=output.map -T\"${CMAKE_CURRENT_SOURCE_DIR}/linker.ld\"")
 
-message(STATUS "C Compiler ID: ${CMAKE_C_COMPILER_ID}")
-
 if(DEFINED WARNING_C_FLAGS)
     set(CMAKE_C_FLAGS "${WARNING_C_FLAGS} ${CMAKE_C_FLAGS}")
-endif()
-
-if(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
+elseif(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -wx -wcd=202")
     list(APPEND WOLFSSL_DEFINITIONS "-DWOLFSSL_HAVE_MIN -DWOLFSSL_HAVE_MAX -DNO_WRITEV")
 elseif(WIN32)
@@ -1149,7 +1145,8 @@ if(NOT WOLFSSL_MEMORY)
 else()
     # turn off memory cb if leanpsk or leantls on
     if(WOLFSSL_LEAN_PSK OR WOLFSSL_LEAN_TLS)
-        list(APPEND WOLFSSL_DEFINITIONS "-DNO_WOLFSSL_MEMORY")
+        # but don't turn on NO_WOLFSSL_MEMORY because using own
+        override_cache(WOLFSSL_MEMORY "no")
     endif()
 endif()
 
@@ -1901,7 +1898,9 @@ else()
 endif()
 
 if(WOLFSSL_ASYNC_THREADS)
-    list(APPEND WOLFSSL_LINK_LIBS Threads::Threads)
+    if(CMAKE_USE_PTHREADS_INIT)
+        list(APPEND WOLFSSL_LINK_LIBS Threads::Threads)
+    endif()
     list(APPEND WOLFSSL_DEFINITIONS "-D_GNU_SOURCE")
 else()
     list(APPEND WOLFSSL_DEFINITIONS "-DWC_NO_ASYNC_THREADING")
@@ -2433,18 +2432,15 @@ if(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
     endif()
 elseif (WIN32 OR ${CMAKE_SYSTEM_NAME} MATCHES "^MSYS" OR ${CMAKE_SYSTEM_NAME} MATCHES "^MINGW")
     # For Windows link required libraries
-    message("Building on Windows/MSYS/MINGW")
     target_link_libraries(wolfssl PUBLIC
         ws2_32 crypt32 advapi32)
 elseif(APPLE)
-    message("Building on Apple")
     if(WOLFSSL_SYS_CA_CERTS)
         target_link_libraries(wolfssl PUBLIC
             ${CORE_FOUNDATION_FRAMEWORK}
             ${SECURITY_FRAMEWORK})
     endif()
 else()
-    message("Building on Linux (or other)")
     if(WOLFSSL_DH AND NOT WOLFSSL_DH_CONST)
         # DH requires math (m) library
         target_link_libraries(wolfssl

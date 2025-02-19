@@ -2894,7 +2894,7 @@ struct WOLFSSL_BIO {
 #endif /* OPENSSL_EXTRA || OPENSSL_EXTRA_X509_SMALL */
 
 #if defined(WOLFSSL_HAVE_BIO_ADDR) && defined(OPENSSL_EXTRA)
-WOLFSSL_LOCAL socklen_t wolfSSL_BIO_ADDR_size(const WOLFSSL_BIO_ADDR *addr);
+WOLFSSL_LOCAL XSOCKLENT wolfSSL_BIO_ADDR_size(const WOLFSSL_BIO_ADDR *addr);
 #endif
 
 #define MAX_WRITE_IV_SZ 16 /* max size of client/server write_IV */

@@ -32,8 +32,15 @@
 */
 
 #if defined(BUILDING_WOLFSSL)
-    #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN__) || \
-        defined(_WIN32_WCE) || defined(__WATCOMC__)
+    #if defined(__WATCOMC__)
+        #if defined(WOLFSSL_DLL) && (defined(__NT__) || defined(__OS2__))
+            #define WOLFSSL_API __declspec(dllexport)
+        #else
+            #define WOLFSSL_API
+        #endif
+        #define WOLFSSL_LOCAL
+    #elif defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN__) || \
+        defined(_WIN32_WCE)
         #if defined(WOLFSSL_DLL)
             #define WOLFSSL_API __declspec(dllexport)
         #else

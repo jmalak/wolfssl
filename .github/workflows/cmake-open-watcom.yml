@@ -1,0 +1,138 @@
+# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
+# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
+name: Open Watcom (CMake on multiple platforms)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        common:
+          #- cmake:    '--debug-output --trace -Wdev -B build -G "Watcom WMake" -DCMAKE_VERBOSE_MAKEFILE=TRUE'
+          - cmake:    '-B build -G "Watcom WMake" -DCMAKE_VERBOSE_MAKEFILE=TRUE'
+        config:
+          - name:     'Release'
+            id:       'Release'
+            cmake:    '-DCMAKE_BUILD_TYPE=Release'
+        owimage:
+          - name:     '1.9'
+            ver:      '1.9'
+            id:       '19'
+          - name:     '2.0'
+            ver:      '2.0'
+            id:       '20'
+        os:
+          - name:     'Windows on Windows'
+            host:     'Windows'
+            id:       'windows' 
+            image:    'windows-latest'
+            cmake:    '-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_SYSTEM_PROCESSOR=x86 -DWOLFSSL_ASM=no'
+          - name:     'Linux on Linux'
+            host:     'Linux'
+            id:       'linux'
+            image:    'ubuntu-latest'
+            cmake:    '-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=x86 -DWOLFSSL_ASM=no'
+          - name:     'Linux on Windows'
+            host:     'Windows'
+            id:       'linux'
+            image:    'windows-latest'
+            cmake:    '-DCMAKE_SYSTEM_NAME=Linux -DWOLFSSL_ASM=no'
+          - name:     'OS/2 on Windows'
+            host:     'Windows'
+            id:       'os2' 
+            image:    'windows-latest'
+            cmake:    '-DCMAKE_SYSTEM_NAME=OS2 -DWOLFSSL_ASM=no'
+            #cmake:    '-DCMAKE_SYSTEM_NAME=OS2 -DWOLFSSL_ASM=no -DWOLFSSL_EXAMPLES=no -DWOLFSSL_CRYPT_TESTS=no'
+        thread:
+          - name:     'mt'
+            id:       'mt'
+            cmake:    ''
+            owcmake:  '-DCMAKE_POLICY_DEFAULT_CMP0136=NEW -DCMAKE_WATCOM_RUNTIME_LIBRARY=MultiThreaded'
+          - name:     'st'
+            id:       'st'
+            cmake:    '-DWOLFSSL_SINGLE_THREADED=yes'
+            owcmake:  '-DCMAKE_POLICY_DEFAULT_CMP0136=NEW -DCMAKE_WATCOM_RUNTIME_LIBRARY=SingleThreaded'
+        library:    
+          - name:     'DLL'
+            id:       'dll'
+            cmake:    ''
+            owcmake:  'DLL'
+          - name:     ''
+            id:       'static'
+            cmake:    '-DBUILD_SHARED_LIBS=no'
+            owcmake:  ''
+        openssl:
+          - name:   ''
+            id:     ''
+            cmake:  ''
+          - name:   'OpenSSL'
+            id:     'ossl'
+            cmake:  '-DWOLFSSL_OPENSSLALL=yes'
+        ip:
+          - name:   'IPV4'
+            id:     'ip4'
+            cmake:  ''
+          - name:   'IPV6'
+            id:     'ip6'
+            cmake:  '-DWOLFSSL_IPV6=yes'
+        exclude:
+          - { os: { id: 'linux' }, library: { id: 'dll' } }
+          - { os: { id: 'linux' }, thread: { id: 'mt' }, owimage: { ver: '1.9' } }
+    runs-on: ${{matrix.os.image}}
+    name: ${{matrix.os.name}} OW ${{matrix.owimage.name}} (${{matrix.ip.name}} ${{matrix.thread.name}} ${{matrix.library.name}} ${{matrix.openssl.name}})
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Open Watcom
+      uses: open-watcom/setup-watcom@v0
+      with:
+        version: ${{matrix.owimage.ver}}
+    - name: Create build subdirectory
+      run: mkdir build
+    - name: Configure CMake
+      # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only
+      # required if you are using a single-configuration generator such as make.
+      run: cmake ${{matrix.common.cmake}} ${{matrix.config.cmake}} ${{matrix.os.cmake}} ${{matrix.ip.cmake}} ${{matrix.thread.cmake}} ${{matrix.library.cmake}} ${{matrix.openssl.cmake}} ${{matrix.thread.owcmake}}${{matrix.library.owcmake}}
+    - name: Build
+      run: cmake --build build
+    - name: Upload build errors
+      #if: failure()
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{matrix.os.id}}-${{matrix.os.host}}-${{matrix.owimage.ver}}-${{matrix.ip.id}}-${{matrix.thread.id}}-${{matrix.library.id}}-${{matrix.openssl.id}}
+        path: |
+          build/**
+    - name: Tests Windows
+      if: matrix.os.host == 'Windows' && matrix.os.id == 'Windows'
+      working-directory: build/wolfcrypt/test
+      run: |
+        copy ${{github.workspace}}\build\wolfssl.dll .
+        mkdir certs
+        copy ${{github.workspace}}\certs\*.der .\certs\
+        testwolfcrypt
+      shell: cmd
+    - name: Tests Linux
+      if: matrix.os.host == 'Linux' && matrix.os.id == 'Linux'
+      working-directory: build/wolfcrypt/test
+      run: |
+        mkdir certs
+        cp ${{github.workspace}}/certs/*.der ./certs/
+        ./testwolfcrypt
+      shell: bash
+    - name: Benchmark Windows
+      if: matrix.os.host == 'Windows' && matrix.os.id == 'Windows'
+      working-directory: build/wolfcrypt/benchmark
+      run: |
+        copy ${{github.workspace}}\build\wolfssl.dll .
+        benchmark
+      shell: cmd
+    - name: Benchmark Linux
+      if: matrix.os.host == 'Linux' && matrix.os.id == 'Linux'
+      working-directory: build/wolfcrypt/benchmark
+      run: |
+        ./benchmark
+      shell: bash
