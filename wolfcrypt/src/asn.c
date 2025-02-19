@@ -5709,7 +5709,7 @@ int EncodeObjectId(const word16* in, word32 inSz, byte* out, word32* outSz)
     word32 d, t;
 
     /* check args */
-    if (in == NULL || outSz == NULL || inSz <= 0) {
+    if (in == NULL || outSz == NULL || inSz == 0) {
         return BAD_FUNC_ARG;
     }
 
@@ -13499,11 +13499,18 @@ static int GenerateDNSEntryIPString(DNS_entry* entry, void* heap)
         return BAD_FUNC_ARG;
     }
 
+    #ifdef WOLFSSL_IPV6
     if (entry->len != WOLFSSL_IP4_ADDR_LEN &&
             entry->len != WOLFSSL_IP6_ADDR_LEN) {
         WOLFSSL_MSG("Unexpected IP size");
         return BAD_FUNC_ARG;
     }
+    #else
+    if (entry->len != WOLFSSL_IP4_ADDR_LEN) {
+        WOLFSSL_MSG("Unexpected IP size");
+        return BAD_FUNC_ARG;
+    }
+    #endif /* WOLFSSL_IPV6 */
     ip = (unsigned char*)entry->name;
 
     XMEMSET(tmpName, 0, sizeof(tmpName));
@@ -13519,6 +13526,7 @@ static int GenerateDNSEntryIPString(DNS_entry* entry, void* heap)
         }
     }
 
+    #ifdef WOLFSSL_IPV6
     if (entry->len == WOLFSSL_IP6_ADDR_LEN) {
         size_t i;
         for (i = 0; i < 8; i++) {
@@ -13532,6 +13540,7 @@ static int GenerateDNSEntryIPString(DNS_entry* entry, void* heap)
             }
         }
     }
+    #endif /* WOLFSSL_IPV6 */
 
     nameSz = XSTRLEN(tmpName);
     entry->ipString = (char*)XMALLOC(nameSz + 1, heap,
@@ -41228,7 +41237,7 @@ static int DecodeHolder(const byte* input, word32 len, DecodedAcert* acert)
     word32 idx = 0;
     word32 holderSerialSz = 0;
 
-    if (input == NULL || len <= 0 || acert == NULL) {
+    if (input == NULL || len == 0 || acert == NULL) {
         return BUFFER_E;
     }
 
@@ -41395,7 +41404,7 @@ static int DecodeAttCertIssuer(const byte* input, word32 len,
     word32       gn_len = 0;
     byte         tag = 0x00;
 
-    if (input == NULL || len <= 0 || cert == NULL) {
+    if (input == NULL || len == 0 || cert == NULL) {
         return BUFFER_E;
     }
 

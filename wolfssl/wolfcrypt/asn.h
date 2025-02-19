@@ -1556,7 +1556,9 @@ enum CsrAttrType {
         #define WOLFSSL_MAX_IPSTR 46 /* max ip size IPv4 mapped IPv6 */
     #endif
     #define WOLFSSL_IP4_ADDR_LEN 4
-    #define WOLFSSL_IP6_ADDR_LEN 16
+    #ifdef WOLFSSL_IPV6
+        #define WOLFSSL_IP6_ADDR_LEN 16
+    #endif /* WOLFSSL_IPV6 */
 #endif /* OPENSSL_ALL || WOLFSSL_IP_ALT_NAME */
 
 typedef struct DNS_entry   DNS_entry;

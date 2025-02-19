@@ -52,59 +52,54 @@ int Nucleus_Net_Errno;
 
 #if defined(USE_WOLFSSL_IO) || defined(HAVE_HTTP_CLIENT)
     #ifdef USE_WINDOWS_API
-        #include <winsock2.h>
-    #else
-        #if defined(WOLFSSL_LWIP) && !defined(WOLFSSL_APACHE_MYNEWT)
-        #elif defined(ARDUINO)
-        #elif defined(FREESCALE_MQX)
-        #elif defined(FREESCALE_KSDK_MQX)
-        #elif (defined(WOLFSSL_MDK_ARM) || defined(WOLFSSL_KEIL_TCP_NET))
-        #elif defined(WOLFSSL_CMSIS_RTOS)
-        #elif defined(WOLFSSL_CMSIS_RTOSv2)
-        #elif defined(WOLFSSL_TIRTOS)
-        #elif defined(FREERTOS_TCP)
-        #elif defined(WOLFSSL_IAR_ARM)
-        #elif defined(HAVE_NETX_BSD)
-        #elif defined(WOLFSSL_VXWORKS)
-        #elif defined(WOLFSSL_NUCLEUS_1_2)
-        #elif defined(WOLFSSL_LINUXKM)
-            /* the requisite linux/net.h is included in wc_port.h, with incompatible warnings masked out. */
-        #elif defined(WOLFSSL_ATMEL)
-        #elif defined(INTIME_RTOS)
-            #include <netdb.h>
-        #elif defined(WOLFSSL_PRCONNECT_PRO)
-            #include <netdb.h>
-            #include <sys/ioctl.h>
-        #elif defined(WOLFSSL_SGX)
-        #elif defined(WOLFSSL_APACHE_MYNEWT) && !defined(WOLFSSL_LWIP)
-        #elif defined(WOLFSSL_DEOS)
-        #elif defined(WOLFSSL_ZEPHYR)
-        #elif defined(MICROCHIP_PIC32)
-        #elif defined(HAVE_NETX)
-        #elif defined(FUSION_RTOS)
-        #elif !defined(WOLFSSL_NO_SOCK)
-            #if defined(HAVE_RTP_SYS)
-            #elif defined(EBSNET)
-            #elif defined(NETOS)
-            #elif !defined(DEVKITPRO) && !defined(WOLFSSL_PICOTCP) \
-                    && !defined(WOLFSSL_CONTIKI) && !defined(WOLFSSL_WICED) \
-                    && !defined(WOLFSSL_GNRC) && !defined(WOLFSSL_RIOT_OS)
-                #ifdef HAVE_NETDB_H
-                    #include <netdb.h>
-                #endif
-                #ifdef __PPU
-                    #include <netex/errno.h>
-                #else
-                    #ifdef HAVE_SYS_IOCTL_H
-                        #include <sys/ioctl.h>
-                    #endif
+    #elif defined(WOLFSSL_LWIP) && !defined(WOLFSSL_APACHE_MYNEWT)
+    #elif defined(ARDUINO)
+    #elif defined(FREESCALE_MQX)
+    #elif defined(FREESCALE_KSDK_MQX)
+    #elif (defined(WOLFSSL_MDK_ARM) || defined(WOLFSSL_KEIL_TCP_NET))
+    #elif defined(WOLFSSL_CMSIS_RTOS)
+    #elif defined(WOLFSSL_CMSIS_RTOSv2)
+    #elif defined(WOLFSSL_TIRTOS)
+    #elif defined(FREERTOS_TCP)
+    #elif defined(WOLFSSL_IAR_ARM)
+    #elif defined(HAVE_NETX_BSD)
+    #elif defined(WOLFSSL_VXWORKS)
+    #elif defined(WOLFSSL_NUCLEUS_1_2)
+    #elif defined(WOLFSSL_LINUXKM)
+        /* the requisite linux/net.h is included in wc_port.h, with incompatible warnings masked out. */
+    #elif defined(WOLFSSL_ATMEL)
+    #elif defined(INTIME_RTOS)
+        #include <netdb.h>
+    #elif defined(WOLFSSL_PRCONNECT_PRO)
+        #include <netdb.h>
+        #include <sys/ioctl.h>
+    #elif defined(WOLFSSL_SGX)
+    #elif defined(WOLFSSL_APACHE_MYNEWT) && !defined(WOLFSSL_LWIP)
+    #elif defined(WOLFSSL_DEOS)
+    #elif defined(WOLFSSL_ZEPHYR)
+    #elif defined(MICROCHIP_PIC32)
+    #elif defined(HAVE_NETX)
+    #elif defined(FUSION_RTOS)
+    #elif !defined(WOLFSSL_NO_SOCK)
+        #if defined(HAVE_RTP_SYS)
+        #elif defined(EBSNET)
+        #elif defined(NETOS)
+        #elif !defined(DEVKITPRO) && !defined(WOLFSSL_PICOTCP) \
+                && !defined(WOLFSSL_CONTIKI) && !defined(WOLFSSL_WICED) \
+                && !defined(WOLFSSL_GNRC) && !defined(WOLFSSL_RIOT_OS)
+            #ifdef HAVE_NETDB_H
+                #include <netdb.h>
+            #endif
+            #ifdef __PPU
+                #include <netex/errno.h>
+            #else
+                #ifdef HAVE_SYS_IOCTL_H
+                    #include <sys/ioctl.h>
                 #endif
             #endif
         #endif
-
-    #endif /* USE_WINDOWS_API */
+    #endif
 #endif /* defined(USE_WOLFSSL_IO) || defined(HAVE_HTTP_CLIENT) */
-
 
 #if defined(HAVE_HTTP_CLIENT)
     #include <stdlib.h>   /* strtol() */
@@ -1017,16 +1012,16 @@ int EmbedGenerateCookie(WOLFSSL* ssl, byte *buf, int sz, void *ctx)
                 *port = XNTOHS(((SOCKADDR_IN*)&peer)->sin_port);
                 break;
 
-            case WOLFSSL_IP6:
             #ifdef WOLFSSL_IPV6
+            case WOLFSSL_IP6:
                 if (XINET_NTOP(*fam, &(((SOCKADDR_IN6*)&peer)->sin6_addr),
                                                            ip, *ipSz) == NULL) {
                     WOLFSSL_MSG("XINET_NTOP error");
                     return SOCKET_ERROR_E;
                 }
                 *port = XNTOHS(((SOCKADDR_IN6*)&peer)->sin6_port);
-            #endif /* WOLFSSL_IPV6 */
                 break;
+            #endif /* WOLFSSL_IPV6 */
 
             default:
                 WOLFSSL_MSG("Unknown family type");
@@ -1067,8 +1062,8 @@ int EmbedGenerateCookie(WOLFSSL* ssl, byte *buf, int sz, void *ctx)
                 }
                 break;
 
-            case WOLFSSL_IP6:
             #ifdef WOLFSSL_IPV6
+            case WOLFSSL_IP6:
                 if (XINET_PTON(addr.ss_family, ip,
                                    &(((SOCKADDR_IN6*)&addr)->sin6_addr)) <= 0) {
                     WOLFSSL_MSG("XINET_PTON error");
@@ -1082,8 +1077,8 @@ int EmbedGenerateCookie(WOLFSSL* ssl, byte *buf, int sz, void *ctx)
                     WOLFSSL_MSG("Import DTLS peer info error");
                     return ret;
                 }
-            #endif /* WOLFSSL_IPV6 */
                 break;
+            #endif /* WOLFSSL_IPV6 */
 
             default:
                 WOLFSSL_MSG("Unknown address family");
@@ -1197,7 +1192,7 @@ int wolfIO_Send(SOCKET_T sd, char *buf, int sz, int wrFlags)
 int wolfIO_RecvFrom(SOCKET_T sd, WOLFSSL_BIO_ADDR *addr, char *buf, int sz, int rdFlags)
 {
     int recvd;
-    socklen_t addr_len = (socklen_t)sizeof(*addr);
+    XSOCKLENT addr_len = (XSOCKLENT)sizeof(*addr);
 
     recvd = (int)DTLS_RECVFROM_FUNCTION(sd, buf, (size_t)sz, rdFlags,
                                             addr ? &addr->sa : NULL,
@@ -1210,7 +1205,7 @@ int wolfIO_RecvFrom(SOCKET_T sd, WOLFSSL_BIO_ADDR *addr, char *buf, int sz, int 
 int wolfIO_SendTo(SOCKET_T sd, WOLFSSL_BIO_ADDR *addr, char *buf, int sz, int wrFlags)
 {
     int sent;
-    socklen_t addr_len = addr ? wolfSSL_BIO_ADDR_size(addr) : 0;
+    XSOCKLENT addr_len = addr ? wolfSSL_BIO_ADDR_size(addr) : 0;
 
     sent = (int)DTLS_SENDTO_FUNCTION(sd, buf, (size_t)sz, wrFlags,
                                          addr ? &addr->sa : NULL,
@@ -1343,7 +1338,7 @@ int wolfIO_TcpConnect(SOCKET_T* sockfd, const char* ip, word16 port, int to_sec)
 #ifdef HAVE_SOCKADDR
     int ret = 0;
     SOCKADDR_S addr;
-    socklen_t sockaddr_len;
+    XSOCKLENT sockaddr_len;
 #if defined(HAVE_GETADDRINFO)
     /* use getaddrinfo */
     ADDRINFO hints;
@@ -1572,7 +1567,7 @@ int wolfIO_TcpBind(SOCKET_T* sockfd, word16 port)
 #ifdef HAVE_SOCKADDR
     int ret = 0;
     SOCKADDR_S addr;
-    socklen_t sockaddr_len = sizeof(SOCKADDR_IN);
+    XSOCKLENT sockaddr_len = sizeof(SOCKADDR_IN);
     SOCKADDR_IN *sin = (SOCKADDR_IN *)&addr;
 
     if (sockfd == NULL || port < 1) {
