@@ -5709,7 +5709,7 @@ int EncodeObjectId(const word16* in, word32 inSz, byte* out, word32* outSz)
     word32 d, t;
 
     /* check args */
-    if (in == NULL || outSz == NULL || inSz <= 0) {
+    if (in == NULL || outSz == NULL || inSz == 0) {
         return BAD_FUNC_ARG;
     }
 
@@ -41228,7 +41228,7 @@ static int DecodeHolder(const byte* input, word32 len, DecodedAcert* acert)
     word32 idx = 0;
     word32 holderSerialSz = 0;
 
-    if (input == NULL || len <= 0 || acert == NULL) {
+    if (input == NULL || len == 0 || acert == NULL) {
         return BUFFER_E;
     }
 
@@ -41395,7 +41395,7 @@ static int DecodeAttCertIssuer(const byte* input, word32 len,
     word32       gn_len = 0;
     byte         tag = 0x00;
 
-    if (input == NULL || len <= 0 || cert == NULL) {
+    if (input == NULL || len == 0 || cert == NULL) {
         return BUFFER_E;
     }
 

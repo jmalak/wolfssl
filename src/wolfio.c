@@ -51,7 +51,8 @@ int Nucleus_Net_Errno;
 #endif
 
 #if defined(USE_WOLFSSL_IO) || defined(HAVE_HTTP_CLIENT)
-    #ifdef USE_WINDOWS_API
+    #ifdef __WATCOMC__
+    #elif defined(USE_WINDOWS_API)
         #include <winsock2.h>
     #else
         #if defined(WOLFSSL_LWIP) && !defined(WOLFSSL_APACHE_MYNEWT)
@@ -1401,14 +1402,14 @@ int wolfIO_TcpConnect(SOCKET_T* sockfd, const char* ip, word16 port, int to_sec)
         return WOLFSSL_FATAL_ERROR;
     }
 
-    if (getaddrinfo(ip, strPort, &hints, &answer) < 0 || answer == NULL) {
+    if (XGETADDRINFO(ip, strPort, &hints, &answer) < 0 || answer == NULL) {
         WOLFSSL_MSG("no addr info for responder");
         return WOLFSSL_FATAL_ERROR;
     }
 
     sockaddr_len = answer->ai_addrlen;
     XMEMCPY(&addr, answer->ai_addr, (size_t)sockaddr_len);
-    freeaddrinfo(answer);
+    XFREEADDRINFO(answer);
 #elif defined(WOLFSSL_USE_POPEN_HOST) && !defined(WOLFSSL_IPV6)
     {
         char host_ipaddr[4] = { 127, 0, 0, 1 };

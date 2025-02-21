@@ -58,30 +58,38 @@
 #endif
 
 #if defined(__WATCOMC__)
-    #if defined(__NT__)
-    #elif defined(__OS2__)
-        #include <errno.h>
-        #include <os2.h>
-        #include <sys/types.h>
-        #include <os2/types.h>
-        #include <sys/socket.h>
-        #include <arpa/inet.h>
-        #include <netinet/in.h>
-        #include <nerrno.h>
-        #include <sys/ioctl.h>
-
-        typedef int socklen_t;
-    #elif defined(__LINUX__)
-        #include <sys/types.h>
-        #include <errno.h>
-        #include <unistd.h>
-        #include <fcntl.h>
-        #define XFCNTL(fd, flag, block) fcntl((fd), (flag), (block))
+    #if defined(WOLFSSL_NO_SOCK)
+    #elif defined(__NT__)
+        #ifdef WOLFSSL_IPV6
+                #include <ws2tcpip.h>
+        #else
+                #include <winsock.h>
+        #endif
+    #else
+        #if defined(__OS2__)
+            #include <os2.h>
+            #include <sys/types.h>
+            #include <os2/types.h>
+            #include <errno.h>
+            #include <nerrno.h>
+            #include <tcpustd.h>
+            typedef int socklen_t;
+        #elif defined(__UNIX__)
+            #include <errno.h>
+            #include <sys/types.h>
+            #include <unistd.h>
+        #endif
         #include <sys/socket.h>
         #include <arpa/inet.h>
         #include <netinet/in.h>
     #endif
 #elif defined(USE_WINDOWS_API)
+    #if defined(WOLFSSL_NO_SOCK)
+    #else
+//        #define IPV6STRICT
+//        #include <winsock2.h>
+        #include <ws2tcpip.h>
+    #endif
 #else
     #if defined(WOLFSSL_LWIP) && !defined(WOLFSSL_APACHE_MYNEWT)
         /* lwIP needs to be configured to use sockets API in this mode */
@@ -464,7 +472,7 @@
 
 #ifndef WOLFSSL_NO_SOCK
     #ifndef XSOCKLENT
-        #ifdef USE_WINDOWS_API
+        #if defined(USE_WINDOWS_API) || defined(__WATCOMC__) && defined(__OS2__)
             #define XSOCKLENT int
         #elif defined(NUCLEUS_PLUS_2_3)
             typedef int socklen_t;
@@ -483,23 +491,48 @@
 
     /* Socket Addr Support */
     #ifdef HAVE_SOCKADDR
-    #ifndef HAVE_SOCKADDR_DEFINED
-        typedef struct sockaddr         SOCKADDR;
-    #endif
-        typedef struct sockaddr_storage SOCKADDR_S;
-        typedef struct sockaddr_in      SOCKADDR_IN;
-        #ifdef WOLFSSL_IPV6
-            typedef struct sockaddr_in6 SOCKADDR_IN6;
+        #if defined(USE_WINDOWS_API)
+            #define HAVE_GETADDRINFO
+            typedef struct sockaddr_storage SOCKADDR_S;
+        #else
+            #ifndef HAVE_SOCKADDR_DEFINED
+                typedef struct sockaddr     SOCKADDR;
+            #endif
+            typedef struct sockaddr_storage SOCKADDR_S;
+            typedef struct sockaddr_in      SOCKADDR_IN;
+            #ifdef WOLFSSL_IPV6
+                typedef struct sockaddr_in6 SOCKADDR_IN6;
+            #endif
+            #if defined(HAVE_SYS_UN_H) && !defined(WOLFSSL_NO_SOCKADDR_UN)
+                #include <sys/un.h>
+                typedef struct sockaddr_un  SOCKADDR_UN;
+            #endif
+            typedef struct hostent          HOSTENT;
+
+            #if defined(HAVE_GETADDRINFO)
+                typedef struct addrinfo     ADDRINFO;
+            #endif
         #endif
-        #if defined(HAVE_SYS_UN_H) && !defined(WOLFSSL_NO_SOCKADDR_UN)
-            #include <sys/un.h>
-            typedef struct sockaddr_un SOCKADDR_UN;
-        #endif
-        typedef struct hostent          HOSTENT;
     #endif /* HAVE_SOCKADDR */
 
-    #if defined(HAVE_GETADDRINFO)
-        typedef struct addrinfo         ADDRINFO;
+    #ifdef USE_WINDOWS_API
+        #ifndef SOCKET_T
+            #ifdef __MINGW64__
+                typedef size_t SOCKET_T;
+            #else
+                #define SOCKET_T    SOCKET
+            #endif
+        #endif
+        #ifndef SOCKET_INVALID
+            #define SOCKET_INVALID INVALID_SOCKET
+        #endif
+    #else
+        #ifndef SOCKET_T
+            typedef int SOCKET_T;
+        #endif
+        #ifndef SOCKET_INVALID
+            #define SOCKET_INVALID (-1)
+        #endif
     #endif
 #endif /* WOLFSSL_NO_SOCK */
 
@@ -892,6 +925,35 @@ WOLFSSL_API void wolfSSL_SetIOWriteFlags(WOLFSSL* ssl, int flags);
 #endif /* WOLFSSL_SESSION_EXPORT */
 
 
+#ifdef HAVE_GETADDRINFO
+    #ifndef XGETADDRINFO
+        #ifdef __WATCOMC__
+            #if defined(__OS2__)
+                #define XGETADDRINFO    getaddrinfo
+                #define XFREEADDRINFO   freeaddrinfo
+            #else
+                #ifdef WOLFSSL_IPV6
+                    #if defined(__NT__)
+                        #define XGETADDRINFO    GetAddrInfo
+                        #define XFREEADDRINFO   FreeAddrInfo
+                    #elif defined(__UNIX__)
+                        #define XGETADDRINFO    getaddrinfo
+                        #define XFREEADDRINFO   freeaddrinfo
+                    #endif
+                #else
+                    #define XGETADDRINFO    getaddrinfo
+                    #define XFREEADDRINFO   freeaddrinfo
+                #endif
+            #endif
+        #elif defined(USE_WINDOWS_API) /* Windows-friendly definition */
+            #define XGETADDRINFO        GetAddrInfo
+            #define XFREEADDRINFO       FreeAddrInfo
+        #else
+            #define XGETADDRINFO        getaddrinfo
+            #define XFREEADDRINFO       freeaddrinfo
+        #endif
+    #endif
+#endif
 
 #ifndef XINET_NTOP
     #if defined(__WATCOMC__)

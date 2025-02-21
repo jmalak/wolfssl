@@ -88,19 +88,13 @@
 #ifdef __WATCOMC__
     #define SNPRINTF snprintf
     #if defined(__NT__)
-        #include <winsock2.h>
-        #include <ws2tcpip.h>
-        #include <process.h>
-        #ifdef TEST_IPV6            /* don't require newer SDK for IPV4 */
-            #include <wspiapi.h>
-        #endif
-        #define SOCKET_T SOCKET
+//        #include <process.h>
         #define XSLEEP_MS(t) Sleep(t)
     #elif defined(__OS2__)
         #include <netdb.h>
         #include <sys/ioctl.h>
-        #include <tcpustd.h>
-        #define SOCKET_T int
+        #include <i86.h>
+        #define XSLEEP_MS(t) delay(t)
     #elif defined(__UNIX__)
         #include <string.h>
         #include <netdb.h>
@@ -125,19 +119,17 @@
             }
     #endif
 #elif defined(USE_WINDOWS_API)
-    #include <winsock2.h>
-    #include <ws2tcpip.h>
+//    #include <winsock2.h>
     #include <process.h>
     #ifdef TEST_IPV6            /* don't require newer SDK for IPV4 */
-        #include <wspiapi.h>
+//        #include <ws2tcpip.h>
+//        #include <wspiapi.h>
     #endif
-    #define SOCKET_T SOCKET
     #define SNPRINTF _snprintf
     #define XSLEEP_MS(t) Sleep(t)
 #elif defined(WOLFSSL_MDK_ARM) || defined(WOLFSSL_KEIL_TCP_NET)
     #include <string.h>
     #include "rl_net.h"
-    #define SOCKET_T int
     typedef int socklen_t ;
     #define inet_addr wolfSSL_inet_addr
     static unsigned long wolfSSL_inet_addr(const char *cp)
@@ -168,7 +160,6 @@
         int h_length; /* length of address */
         char **h_addr_list; /* list of addresses from name server */
     };
-    #define SOCKET_T int
     #define XSLEEP_MS(t) Task_sleep(t/1000)
 #elif defined(WOLFSSL_VXWORKS)
     #include <hostLib.h>
@@ -186,7 +177,6 @@
     #endif
     #include <netdb.h>
     #include <pthread.h>
-    #define SOCKET_T int
 #elif defined(WOLFSSL_ZEPHYR)
     #include <version.h>
     #include <string.h>
@@ -208,7 +198,6 @@
             #include <posix/sys/select.h>
         #endif
     #endif
-    #define SOCKET_T int
     #define SOL_SOCKET 1
     #define WOLFSSL_USE_GETADDRINFO
 
@@ -264,7 +253,6 @@
     #ifdef FREESCALE_MQX
         typedef int socklen_t ;
     #endif
-    #define SOCKET_T int
     #ifndef SO_NOSIGPIPE
         #include <signal.h>  /* ignore SIGPIPE */
     #endif
@@ -317,11 +305,11 @@
 /* Socket Handling */
 #ifndef WOLFSSL_SOCKET_INVALID
 #ifdef USE_WINDOWS_API
-    #define WOLFSSL_SOCKET_INVALID  ((SOCKET_T)INVALID_SOCKET)
+    #define WOLFSSL_SOCKET_INVALID  ((SOCKET_T)SOCKET_INVALID)
 #elif defined(WOLFSSL_TIRTOS)
-    #define WOLFSSL_SOCKET_INVALID  ((SOCKET_T)-1)
+    #define WOLFSSL_SOCKET_INVALID  ((SOCKET_T)SOCKET_INVALID)
 #else
-    #define WOLFSSL_SOCKET_INVALID  (SOCKET_T)(-1)
+    #define WOLFSSL_SOCKET_INVALID  (SOCKET_T)SOCKET_INVALID
 #endif
 #endif /* WOLFSSL_SOCKET_INVALID */
 
@@ -1353,7 +1341,19 @@ static WC_INLINE void build_addr(SOCKADDR_IN_T* addr, const char* peer,
             XMEMCPY(&addr->sin_addr.s_addr, host_ipaddr, sizeof(host_ipaddr));
             useLookup = 1;
         }
-    #elif !defined(WOLFSSL_USE_GETADDRINFO)
+    #elif defined(WOLFSSL_ZEPHYR) && defined(WOLFSSL_USE_GETADDRINFO)
+        struct zsock_addrinfo hints, *addrInfo;
+        char portStr[6];
+        XSNPRINTF(portStr, sizeof(portStr), "%d", port);
+        XMEMSET(&hints, 0, sizeof(hints));
+        hints.ai_family = AF_UNSPEC;
+        hints.ai_socktype = udp ? SOCK_DGRAM : SOCK_STREAM;
+        hints.ai_protocol = udp ? IPPROTO_UDP : IPPROTO_TCP;
+        if (XGETADDRINFO((char*)peer, portStr, &hints, &addrInfo) == 0) {
+            XMEMCPY(addr, addrInfo->ai_addr, sizeof(*addr));
+            useLookup = 1;
+        }
+    #else
         #if defined(WOLFSSL_MDK_ARM) || defined(WOLFSSL_KEIL_TCP_NET)
             int err;
             struct hostent* entry = gethostbyname(peer, &err);
@@ -1368,18 +1368,6 @@ static WC_INLINE void build_addr(SOCKADDR_IN_T* addr, const char* peer,
         if (entry) {
             XMEMCPY(&addr->sin_addr.s_addr, entry->h_addr_list[0],
                    (size_t) entry->h_length);
-            useLookup = 1;
-        }
-    #else
-        struct zsock_addrinfo hints, *addrInfo;
-        char portStr[6];
-        XSNPRINTF(portStr, sizeof(portStr), "%d", port);
-        XMEMSET(&hints, 0, sizeof(hints));
-        hints.ai_family = AF_UNSPEC;
-        hints.ai_socktype = udp ? SOCK_DGRAM : SOCK_STREAM;
-        hints.ai_protocol = udp ? IPPROTO_UDP : IPPROTO_TCP;
-        if (getaddrinfo((char*)peer, portStr, &hints, &addrInfo) == 0) {
-            XMEMCPY(addr, addrInfo->ai_addr, sizeof(*addr));
             useLookup = 1;
         }
     #endif
@@ -1436,12 +1424,12 @@ static WC_INLINE void build_addr(SOCKADDR_IN_T* addr, const char* peer,
             (void)SNPRINTF(strPort, sizeof(strPort), "%d", port);
             strPort[79] = '\0';
 
-            ret = getaddrinfo(peer, strPort, &hints, &answer);
+            ret = XGETADDRINFO(peer, strPort, &hints, &answer);
             if (ret < 0 || answer == NULL)
                 err_sys("getaddrinfo failed");
 
             XMEMCPY(addr, answer->ai_addr, answer->ai_addrlen);
-            freeaddrinfo(answer);
+            XFREEADDRINFO(answer);
         #else
             printf("no ipv6 getaddrinfo, loopback only tests/examples\n");
             addr->sin6_addr = in6addr_loopback;
