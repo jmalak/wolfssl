@@ -85,14 +85,52 @@
     #endif /* HAVE_ECC */
 #endif /*HAVE_PK_CALLBACKS */
 
-#ifdef USE_WINDOWS_API
-    #include <winsock2.h>
+#ifdef __WATCOMC__
+    #define SNPRINTF snprintf
+    #if defined(__NT__)
+//        #include <process.h>
+        #define XSLEEP_MS(t) Sleep(t)
+    #elif defined(__OS2__)
+        #include <sys/ioctl.h>
+        #include <netdb.h>
+        #include <i86.h>
+        #define XSLEEP_MS(t) delay(t)
+    #elif defined(__UNIX__)
+        #include <string.h>
+        #include <sys/types.h>
+        #include <unistd.h>
+        #include <netdb.h>
+        #include <netinet/in.h>
+        #include <netinet/tcp.h>
+        #include <arpa/inet.h>
+        #ifndef WOLFSSL_NDS
+            #include <sys/ioctl.h>
+        #endif
+        #include <sys/time.h>
+        #include <sys/socket.h>
+        #ifdef HAVE_PTHREAD
+            #include <pthread.h>
+        #endif
+        #include <fcntl.h>
+//        #define SOCKET_T int
+        #include <signal.h>  /* ignore SIGPIPE */
+
+        #define XSELECT_WAIT(x,y) do { \
+            struct timeval tv = {((x) + ((y) / 1000000)),((y) % 1000000)}; \
+            if ((select(0, NULL, NULL, NULL, &tv) < 0) && (errno != EINTR)) \
+                err_sys("select for XSELECT_WAIT failed."); \
+        } while (0)
+        #define XSLEEP_US(u) XSELECT_WAIT(0,u)
+        #define XSLEEP_MS(m) XSELECT_WAIT(0,(m)*1000)
+    #endif
+#elif defined(USE_WINDOWS_API)
+//    #include <winsock2.h>
     #include <process.h>
     #ifdef TEST_IPV6            /* don't require newer SDK for IPV4 */
-        #include <ws2tcpip.h>
-        #include <wspiapi.h>
+//        #include <ws2tcpip.h>
+//        #include <wspiapi.h>
     #endif
-    #define SOCKET_T SOCKET
+//    #define SOCKET_T SOCKET
     #define SNPRINTF _snprintf
     #define XSLEEP_MS(t) Sleep(t)
 #elif defined(WOLFSSL_MDK_ARM) || defined(WOLFSSL_KEIL_TCP_NET)
@@ -1314,7 +1352,19 @@ static WC_INLINE void build_addr(SOCKADDR_IN_T* addr, const char* peer,
             XMEMCPY(&addr->sin_addr.s_addr, host_ipaddr, sizeof(host_ipaddr));
             useLookup = 1;
         }
-    #elif !defined(WOLFSSL_USE_GETADDRINFO)
+    #elif defined(WOLFSSL_ZEPHYR) && defined(WOLFSSL_USE_GETADDRINFO)
+        struct zsock_addrinfo hints, *addrInfo;
+        char portStr[6];
+        XSNPRINTF(portStr, sizeof(portStr), "%d", port);
+        XMEMSET(&hints, 0, sizeof(hints));
+        hints.ai_family = AF_UNSPEC;
+        hints.ai_socktype = udp ? SOCK_DGRAM : SOCK_STREAM;
+        hints.ai_protocol = udp ? IPPROTO_UDP : IPPROTO_TCP;
+        if (XGETADDRINFO((char*)peer, portStr, &hints, &addrInfo) == 0) {
+            XMEMCPY(addr, addrInfo->ai_addr, sizeof(*addr));
+            useLookup = 1;
+        }
+    #else
         #if defined(WOLFSSL_MDK_ARM) || defined(WOLFSSL_KEIL_TCP_NET)
             int err;
             struct hostent* entry = gethostbyname(peer, &err);
@@ -1329,18 +1379,6 @@ static WC_INLINE void build_addr(SOCKADDR_IN_T* addr, const char* peer,
         if (entry) {
             XMEMCPY(&addr->sin_addr.s_addr, entry->h_addr_list[0],
                    (size_t) entry->h_length);
-            useLookup = 1;
-        }
-    #else
-        struct zsock_addrinfo hints, *addrInfo;
-        char portStr[6];
-        XSNPRINTF(portStr, sizeof(portStr), "%d", port);
-        XMEMSET(&hints, 0, sizeof(hints));
-        hints.ai_family = AF_UNSPEC;
-        hints.ai_socktype = udp ? SOCK_DGRAM : SOCK_STREAM;
-        hints.ai_protocol = udp ? IPPROTO_UDP : IPPROTO_TCP;
-        if (getaddrinfo((char*)peer, portStr, &hints, &addrInfo) == 0) {
-            XMEMCPY(addr, addrInfo->ai_addr, sizeof(*addr));
             useLookup = 1;
         }
     #endif
@@ -1397,12 +1435,12 @@ static WC_INLINE void build_addr(SOCKADDR_IN_T* addr, const char* peer,
             (void)SNPRINTF(strPort, sizeof(strPort), "%d", port);
             strPort[79] = '\0';
 
-            ret = getaddrinfo(peer, strPort, &hints, &answer);
+            ret = XGETADDRINFO(peer, strPort, &hints, &answer);
             if (ret < 0 || answer == NULL)
                 err_sys("getaddrinfo failed");
 
             XMEMCPY(addr, answer->ai_addr, answer->ai_addrlen);
-            freeaddrinfo(answer);
+            XFREEADDRINFO(answer);
         #else
             printf("no ipv6 getaddrinfo, loopback only tests/examples\n");
             addr->sin6_addr = in6addr_loopback;
@@ -1429,7 +1467,7 @@ static WC_INLINE void tcp_socket(SOCKET_T* sockfd, int udp, int sctp)
         err_sys_with_errno("socket failed\n");
     }
 
-#ifndef USE_WINDOWS_API
+#if !defined(USE_WINDOWS_API) && !defined(__WATCOMC__) && !defined(__OS2__)
 #ifdef SO_NOSIGPIPE
     {
         int       on = 1;
@@ -1801,6 +1839,10 @@ static WC_INLINE void tcp_set_nonblocking(SOCKET_T* sockfd)
         || defined (WOLFSSL_TIRTOS)|| defined(WOLFSSL_VXWORKS) \
         || defined(WOLFSSL_ZEPHYR)
          /* non blocking not supported, for now */
+    #elif defined(__WATCOMC__) && defined(__OS2__)
+        int dontblock = 1;
+        if (ioctl(*sockfd, FIONBIO, &dontblock) == -1)
+            err_sys_with_errno("ioctl failed");
     #else
         int flags = fcntl(*sockfd, F_GETFL, 0);
         if (flags < 0)
@@ -1822,6 +1864,10 @@ static WC_INLINE void tcp_set_blocking(SOCKET_T* sockfd)
         || defined (WOLFSSL_TIRTOS)|| defined(WOLFSSL_VXWORKS) \
         || defined(WOLFSSL_ZEPHYR)
          /* non blocking not supported, for now */
+    #elif defined(__WATCOMC__) && defined(__OS2__)
+        int dontblock = 0;
+        if (ioctl(*sockfd, FIONBIO, &dontblock) == -1)
+            err_sys_with_errno("ioctl failed");
     #else
         int flags = fcntl(*sockfd, F_GETFL, 0);
         if (flags < 0)

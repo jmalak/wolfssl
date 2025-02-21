@@ -1398,14 +1398,14 @@ int wolfIO_TcpConnect(SOCKET_T* sockfd, const char* ip, word16 port, int to_sec)
         return WOLFSSL_FATAL_ERROR;
     }
 
-    if (getaddrinfo(ip, strPort, &hints, &answer) < 0 || answer == NULL) {
+    if (XGETADDRINFO(ip, strPort, &hints, &answer) < 0 || answer == NULL) {
         WOLFSSL_MSG("no addr info for responder");
         return WOLFSSL_FATAL_ERROR;
     }
 
     sockaddr_len = answer->ai_addrlen;
     XMEMCPY(&addr, answer->ai_addr, (size_t)sockaddr_len);
-    freeaddrinfo(answer);
+    XFREEADDRINFO(answer);
 #elif defined(WOLFSSL_USE_POPEN_HOST) && !defined(WOLFSSL_IPV6)
     {
         char host_ipaddr[4] = { 127, 0, 0, 1 };
