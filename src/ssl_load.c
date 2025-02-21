@@ -34,7 +34,7 @@
 
 #ifdef WOLFSSL_SYS_CA_CERTS
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__WATCOMC__)
     #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
     #include <windows.h>
     #include <wincrypt.h>

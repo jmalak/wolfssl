@@ -894,7 +894,7 @@ long wolfSSL_BIO_ctrl(WOLFSSL_BIO *bio, int cmd, long larg, void *parg)
         case WOLFSSL_BIO_CTRL_DGRAM_CONNECT:
         case WOLFSSL_BIO_CTRL_DGRAM_SET_PEER:
         {
-            socklen_t addr_size;
+            XSOCKLENT addr_size;
             if (parg == NULL) {
                 ret = WOLFSSL_FAILURE;
                 break;
@@ -915,7 +915,7 @@ long wolfSSL_BIO_ctrl(WOLFSSL_BIO *bio, int cmd, long larg, void *parg)
                 bio->connected = 0;
             }
             else {
-                socklen_t addr_size = wolfSSL_BIO_ADDR_size((WOLFSSL_BIO_ADDR *)parg);
+                XSOCKLENT addr_size = wolfSSL_BIO_ADDR_size((WOLFSSL_BIO_ADDR *)parg);
                 if (addr_size == 0) {
                     ret = WOLFSSL_FAILURE;
                     break;
@@ -986,7 +986,7 @@ void wolfSSL_BIO_ADDR_clear(WOLFSSL_BIO_ADDR *addr) {
     addr->sa.sa_family = AF_UNSPEC;
 }
 
-socklen_t wolfSSL_BIO_ADDR_size(const WOLFSSL_BIO_ADDR *addr) {
+XSOCKLENT wolfSSL_BIO_ADDR_size(const WOLFSSL_BIO_ADDR *addr) {
     switch (addr->sa.sa_family) {
 #ifndef WOLFSSL_NO_BIO_ADDR_IN
     case AF_INET:

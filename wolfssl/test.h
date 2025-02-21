@@ -1482,9 +1482,9 @@ static WC_INLINE void tcp_socket(SOCKET_T* sockfd, int udp, int sctp)
     /* nothing to define */
 #elif defined(NETOS)
     /* TODO: signal(SIGPIPE, SIG_IGN); */
-#else  /* no S_NOSIGPIPE */
+#else  /* no SO_NOSIGPIPE */
     signal(SIGPIPE, SIG_IGN);
-#endif /* S_NOSIGPIPE */
+#endif /* SO_NOSIGPIPE */
 
 #if defined(TCP_NODELAY)
     if (!udp && !sctp)
@@ -1642,7 +1642,11 @@ static WC_INLINE void tcp_listen(SOCKET_T* sockfd, word16* port, int useAnyAddr,
 #endif
 #endif
 
+#if defined(__WATCOMC__) && (__WATCOMC__ < 1300)
+    if (bind(*sockfd, (struct sockaddr*)&addr, sizeof(addr)) != 0)
+#else
     if (bind(*sockfd, (const struct sockaddr*)&addr, sizeof(addr)) != 0)
+#endif
         err_sys_with_errno("tcp bind failed");
     if (!udp) {
         #ifdef WOLFSSL_KEIL_TCP_NET
@@ -1722,7 +1726,11 @@ static WC_INLINE void udp_accept(SOCKET_T* sockfd, SOCKET_T* clientfd,
 #endif
 #endif
 
+#if defined(__WATCOMC__) && (__WATCOMC__ < 1300)
+    if (bind(*sockfd, (struct sockaddr*)&addr, sizeof(addr)) != 0)
+#else
     if (bind(*sockfd, (const struct sockaddr*)&addr, sizeof(addr)) != 0)
+#endif
         err_sys_with_errno("tcp bind failed");
 
     #if !defined(USE_WINDOWS_API) && !defined(WOLFSSL_TIRTOS) && \
@@ -2195,6 +2203,9 @@ static WC_INLINE unsigned int my_psk_client_cs_cb(WOLFSSL* ssl,
     extern double current_time();
 #elif defined(WOLFSSL_ZEPHYR)
     extern double current_time();
+#elif defined(__WATCOMC__) && ( (__WATCOMC__ < 1300) || defined(__OS2__) )
+    #include <time.h>
+    static WC_INLINE double current_time(int reset) { (void)reset; return ((double)clock())/CLOCKS_PER_SEC; }
 #else
 
 #if !defined(WOLFSSL_MDK_ARM) && !defined(WOLFSSL_KEIL_TCP_NET) && !defined(WOLFSSL_CHIBIOS)

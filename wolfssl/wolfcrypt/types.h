@@ -419,7 +419,9 @@ typedef struct w64wrapper {
 
     /* set up thread local storage if available */
     #ifdef HAVE_THREAD_LS
-        #if defined(_MSC_VER) || defined(__WATCOMC__)
+        #if defined(_MSC_VER)
+            #define THREAD_LS_T __declspec(thread)
+        #elif defined(__WATCOMC__)
             #define THREAD_LS_T __declspec(thread)
         /* Thread local storage only in FreeRTOS v8.2.1 and higher */
         #elif defined(FREERTOS) || defined(FREERTOS_TCP) || \

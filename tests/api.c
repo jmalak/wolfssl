@@ -7754,7 +7754,7 @@ static THREAD_RETURN WOLFSSL_THREAD test_server_nofail(void* args)
     int sharedCtx = 0;
     int doUdp = 0;
     SOCKADDR_IN_T cliAddr;
-    socklen_t     cliLen;
+    XSOCKLENT     cliLen;
     const char* certFile = svrCertFile;
     const char* keyFile = svrKeyFile;
 
@@ -8953,7 +8953,7 @@ static THREAD_RETURN WOLFSSL_THREAD run_wolfssl_server(void* args)
     }
     if (wolfSSL_dtls(ssl)) {
         SOCKADDR_IN_T cliAddr;
-        socklen_t     cliLen;
+        XSOCKLENT     cliLen;
 
         cliLen = sizeof(cliAddr);
         idx = (int)recvfrom(sfd, input, sizeof(input), MSG_PEEK,
@@ -52803,14 +52803,16 @@ static int test_wolfSSL_a2i_IPADDRESS(void)
     ASN1_OCTET_STRING *st = NULL;
 
     const unsigned char ipv4_exp[] = {0x7F, 0, 0, 1};
-    const unsigned char ipv6_exp[] = {
-        0x20, 0x21, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0xff, 0x00, 0x00, 0x42, 0x77, 0x77
-    };
-    const unsigned char ipv6_home[] = {
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01
-    };
+    #ifdef WOLFSSL_IPV6
+        const unsigned char ipv6_exp[] = {
+            0x20, 0x21, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0xff, 0x00, 0x00, 0x42, 0x77, 0x77
+        };
+        const unsigned char ipv6_home[] = {
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01
+        };
+    #endif /* WOLFSSL_IPV6 */
 
     ExpectNull(st = a2i_IPADDRESS("127.0.0.1bad"));
     ExpectNotNull(st = a2i_IPADDRESS("127.0.0.1"));
@@ -52820,18 +52822,20 @@ static int test_wolfSSL_a2i_IPADDRESS(void)
     ASN1_STRING_free(st);
     st = NULL;
 
-    ExpectNotNull(st = a2i_IPADDRESS("::1"));
-    ExpectNotNull(data = ASN1_STRING_get0_data(st));
-    ExpectIntEQ(dataSz = ASN1_STRING_length(st), WOLFSSL_IP6_ADDR_LEN);
-    ExpectIntEQ(XMEMCMP(data, ipv6_home, dataSz), 0);
-    ASN1_STRING_free(st);
-    st = NULL;
+    #ifdef WOLFSSL_IPV6
+        ExpectNotNull(st = a2i_IPADDRESS("::1"));
+        ExpectNotNull(data = ASN1_STRING_get0_data(st));
+        ExpectIntEQ(dataSz = ASN1_STRING_length(st), WOLFSSL_IP6_ADDR_LEN);
+        ExpectIntEQ(XMEMCMP(data, ipv6_home, dataSz), 0);
+        ASN1_STRING_free(st);
+        st = NULL;
 
-    ExpectNotNull(st = a2i_IPADDRESS("2021:db8::ff00:42:7777"));
-    ExpectNotNull(data = ASN1_STRING_get0_data(st));
-    ExpectIntEQ(dataSz = ASN1_STRING_length(st), WOLFSSL_IP6_ADDR_LEN);
-    ExpectIntEQ(XMEMCMP(data, ipv6_exp, dataSz), 0);
-    ASN1_STRING_free(st);
+        ExpectNotNull(st = a2i_IPADDRESS("2021:db8::ff00:42:7777"));
+        ExpectNotNull(data = ASN1_STRING_get0_data(st));
+        ExpectIntEQ(dataSz = ASN1_STRING_length(st), WOLFSSL_IP6_ADDR_LEN);
+        ExpectIntEQ(XMEMCMP(data, ipv6_exp, dataSz), 0);
+        ASN1_STRING_free(st);
+    #endif /* WOLFSSL_IPV6 */
 #endif
     return EXPECT_RESULT();
 }
@@ -59182,7 +59186,7 @@ static int test_wolfSSL_BIO_datagram(void)
     WOLFSSL_BIO *bio1 = NULL, *bio2 = NULL;
     WOLFSSL_BIO_ADDR *bio_addr1 = NULL, *bio_addr2 = NULL;
     SOCKADDR_IN sin1, sin2;
-    socklen_t slen;
+    XSOCKLENT slen;
     static const char test_msg[] = "I am a datagram, short and stout.";
     char test_msg_recvd[sizeof(test_msg) + 10];
 #ifdef USE_WINDOWS_API
@@ -59216,7 +59220,7 @@ static int test_wolfSSL_BIO_datagram(void)
         sin1.sin_family = AF_INET;
         sin1.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         sin1.sin_port = 0;
-        slen = (socklen_t)sizeof(sin1);
+        slen = (XSOCKLENT)sizeof(sin1);
         ExpectIntEQ(bind(fd1, (const struct sockaddr *)&sin1, slen), 0);
         ExpectIntEQ(setsockopt(fd1, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout)), 0);
         ExpectIntEQ(getsockname(fd1, (struct sockaddr *)&sin1, &slen), 0);
@@ -59226,7 +59230,7 @@ static int test_wolfSSL_BIO_datagram(void)
         sin2.sin_family = AF_INET;
         sin2.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         sin2.sin_port = 0;
-        slen = (socklen_t)sizeof(sin2);
+        slen = (XSOCKLENT)sizeof(sin2);
         ExpectIntEQ(bind(fd2, (const struct sockaddr *)&sin2, slen), 0);
         ExpectIntEQ(setsockopt(fd2, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout)), 0);
         ExpectIntEQ(getsockname(fd2, (struct sockaddr *)&sin2, &slen), 0);
@@ -59276,8 +59280,8 @@ static int test_wolfSSL_BIO_datagram(void)
 
     /* now "connect" the sockets. */
 
-    ExpectIntEQ(connect(fd1, (const struct sockaddr *)&sin2, (socklen_t)sizeof(sin2)), 0);
-    ExpectIntEQ(connect(fd2, (const struct sockaddr *)&sin1, (socklen_t)sizeof(sin1)), 0);
+    ExpectIntEQ(connect(fd1, (const struct sockaddr *)&sin2, (XSOCKLENT)sizeof(sin2)), 0);
+    ExpectIntEQ(connect(fd2, (const struct sockaddr *)&sin1, (XSOCKLENT)sizeof(sin1)), 0);
 
     if (EXPECT_SUCCESS()) {
         XMEMCPY(&bio_addr2->sa_in, &sin2, sizeof(sin2));
@@ -59305,8 +59309,8 @@ static int test_wolfSSL_BIO_datagram(void)
     /* now "disconnect" the sockets and attempt transmits expected to fail. */
 
     sin1.sin_family = AF_UNSPEC;
-    ExpectIntEQ(connect(fd1, (const struct sockaddr *)&sin1, (socklen_t)sizeof(sin1)), 0);
-    ExpectIntEQ(connect(fd2, (const struct sockaddr *)&sin1, (socklen_t)sizeof(sin1)), 0);
+    ExpectIntEQ(connect(fd1, (const struct sockaddr *)&sin1, (XSOCKLENT)sizeof(sin1)), 0);
+    ExpectIntEQ(connect(fd2, (const struct sockaddr *)&sin1, (XSOCKLENT)sizeof(sin1)), 0);
     sin1.sin_family = AF_INET;
 
     ExpectIntEQ((int)wolfSSL_BIO_ctrl(bio1, BIO_CTRL_DGRAM_SET_CONNECTED, 0, NULL), WOLFSSL_SUCCESS);
