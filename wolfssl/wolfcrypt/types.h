@@ -406,7 +406,9 @@ typedef struct w64wrapper {
 
     /* set up thread local storage if available */
     #ifdef HAVE_THREAD_LS
-        #if defined(_MSC_VER) || defined(__WATCOMC__)
+        #if defined(_MSC_VER)
+            #define THREAD_LS_T __declspec(thread)
+        #elif defined(__WATCOMC__)
             #define THREAD_LS_T __declspec(thread)
         /* Thread local storage only in FreeRTOS v8.2.1 and higher */
         #elif defined(FREERTOS) || defined(FREERTOS_TCP) || \
@@ -914,6 +916,13 @@ typedef struct w64wrapper {
             /* use only Thread Safe version of strtok */
             #if defined(USE_WOLF_STRTOK)
                 #define XSTRTOK(s1,d,ptr) wc_strtok((s1),(d),(ptr))
+            #elif defined(__WATCOMC__)
+                #if __WATCOMC__ < 1300
+                    #define USE_WOLF_STRTOK
+                    #define XSTRTOK(s1,d,ptr) wc_strtok((s1),(d),(ptr))
+                #else
+                    #define XSTRTOK(s1,d,ptr) strtok_r((s1),(d),(ptr))
+                #endif
             #elif defined(USE_WINDOWS_API) || defined(INTIME_RTOS)
                 #define XSTRTOK(s1,d,ptr) strtok_s((s1),(d),(ptr))
             #else
@@ -996,15 +1005,16 @@ typedef struct w64wrapper {
         #define XTOLOWER(c)      tolower((c))
     #endif
 
-    #ifdef __WATCOMC__
-        /* avoid OFFSETOF conflict in os2def.h */
-        #undef OFFSETOF
-    #endif
-    #ifndef OFFSETOF
-        #if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ >= 4))
-            #define OFFSETOF(type, field) __builtin_offsetof(type, field)
+    #ifndef WOLFSSL_OFFSETOF
+        #ifdef __WATCOMC__
+            #include <stddef.h>
+            #define WOLFSSL_OFFSETOF    offsetof
         #else
-            #define OFFSETOF(type, field) ((size_t)&(((type *)0)->field))
+            #if defined(__clang__) || (defined(__GNUC__) && (__GNUC__ >= 4))
+                #define WOLFSSL_OFFSETOF(type, field) __builtin_offsetof(type, field)
+            #else
+                #define WOLFSSL_OFFSETOF(type, field) ((size_t)&(((type *)0)->field))
+            #endif
         #endif
     #endif
 
@@ -1496,6 +1506,7 @@ typedef struct w64wrapper {
             #define WOLFSSL_THREAD __stdcall
             #define WOLFSSL_THREAD_NO_JOIN _WCCALLBACK
         #elif defined(__OS2__)
+            #define WOLFSSL_THREAD_VOID_RETURN
             typedef void          THREAD_RETURN;
             typedef TID           THREAD_TYPE;
             typedef struct COND_TYPE {

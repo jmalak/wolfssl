@@ -154,9 +154,22 @@
 #ifdef __WATCOMC__
     #if defined(__OS2__)
     #elif defined(__NT__)
+#if 0
+        #ifdef WOLFSSL_IPV6
+            #if _WIN32_WINNT < _WIN32_WINNT_VISTA
+                #undef _WIN32_WINNT
+                #define _WIN32_WINNT _WIN32_WINNT_VISTA
+            #endif
+            #if NTDDI_VERSION < NTDDI_VISTA
+                #undef NTDDI_VERSION
+                #define NTDDI_VERSION   NTDDI_VISTA
+            #endif
+        #endif
         #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
         #include <windows.h>
         #undef _WINSOCKAPI_
+#endif
+            #pragma message( "!!!! internal.h !!!!" )
     #elif defined(__LINUX__)
         #ifndef SINGLE_THREADED
             #define WOLFSSL_PTHREADS
@@ -167,9 +180,11 @@
     #ifdef WOLFSSL_GAME_BUILD
         #include "system/xtl.h"
     #else
+#if 0
         #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
         #include <windows.h>
         #undef _WINSOCKAPI_
+#endif
     #endif
 #elif defined(THREADX)
     #ifndef SINGLE_THREADED
@@ -2889,7 +2904,7 @@ struct WOLFSSL_BIO {
 #endif /* OPENSSL_EXTRA || OPENSSL_EXTRA_X509_SMALL */
 
 #if defined(WOLFSSL_HAVE_BIO_ADDR) && defined(OPENSSL_EXTRA)
-WOLFSSL_LOCAL socklen_t wolfSSL_BIO_ADDR_size(const WOLFSSL_BIO_ADDR *addr);
+WOLFSSL_LOCAL XSOCKLENT wolfSSL_BIO_ADDR_size(const WOLFSSL_BIO_ADDR *addr);
 #endif
 
 #define MAX_WRITE_IV_SZ 16 /* max size of client/server write_IV */
