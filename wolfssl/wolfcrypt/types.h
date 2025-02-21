@@ -233,7 +233,8 @@ decouple library dependencies with standard string, memory and so on.
                 #define SIZEOF_LONG_LONG 8
             #endif
         #endif
-    #elif !defined(__BCPLUSPLUS__) && !defined(__EMSCRIPTEN__)
+    #elif !defined(__BCPLUSPLUS__) && !defined(__EMSCRIPTEN__) && \
+    		!defined(__WATCOMC__)
         #if !defined(SIZEOF_LONG_LONG) && !defined(SIZEOF_LONG)
             #if (defined(__alpha__) || defined(__ia64__) || \
                 defined(_ARCH_PPC64) || defined(__ppc64__) || \
@@ -253,14 +254,19 @@ decouple library dependencies with standard string, memory and so on.
     #endif
 
     #if (defined(_MSC_VER) && !defined(WOLFSSL_NOT_WINDOWS_API)) || \
-           defined(__BCPLUSPLUS__) || \
-           (defined(__WATCOMC__) && defined(__WATCOM_INT64__))
+           defined(__BCPLUSPLUS__)
         /* windows types */
         #define WORD64_AVAILABLE
         #define W64LIT(x) x##ui64
         #define SW64LIT(x) x##i64
         typedef          __int64 sword64;
         typedef unsigned __int64 word64;
+    #elif defined(__WATCOMC__)
+        #define WORD64_AVAILABLE
+        #define W64LIT(x) x##ULL
+        #define SW64LIT(x) x##LL
+        typedef          long long sword64;
+        typedef unsigned long long word64;
     #elif defined(__EMSCRIPTEN__)
         #define WORD64_AVAILABLE
         #define W64LIT(x) x##ull
@@ -922,6 +928,13 @@ typedef struct w64wrapper {
             /* use only Thread Safe version of strtok */
             #if defined(USE_WOLF_STRTOK)
                 #define XSTRTOK(s1,d,ptr) wc_strtok((s1),(d),(ptr))
+            #elif defined(__WATCOMC__)
+                #if __WATCOMC__ < 1300
+                    #define USE_WOLF_STRTOK
+                    #define XSTRTOK(s1,d,ptr) wc_strtok((s1),(d),(ptr))
+                #else
+                    #define XSTRTOK(s1,d,ptr) strtok_r((s1),(d),(ptr))
+                #endif
             #elif defined(USE_WINDOWS_API) || defined(INTIME_RTOS)
                 #define XSTRTOK(s1,d,ptr) strtok_s((s1),(d),(ptr))
             #else
@@ -1503,6 +1516,7 @@ typedef struct w64wrapper {
             #define WOLFSSL_THREAD __stdcall
             #define WOLFSSL_THREAD_NO_JOIN _WCCALLBACK
         #elif defined(__OS2__)
+            #define WOLFSSL_THREAD_VOID_RETURN
             typedef void          THREAD_RETURN;
             typedef TID           THREAD_TYPE;
             typedef struct COND_TYPE {
