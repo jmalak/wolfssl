@@ -154,6 +154,16 @@
 #ifdef __WATCOMC__
     #if defined(__OS2__)
     #elif defined(__NT__)
+        #ifdef WOLFSSL_IPV6
+            #if _WIN32_WINNT < _WIN32_WINNT_VISTA
+                #undef _WIN32_WINNT
+                #define _WIN32_WINNT _WIN32_WINNT_VISTA
+            #endif
+            #if NTDDI_VERSION < NTDDI_VISTA
+                #undef NTDDI_VERSION
+                #define NTDDI_VERSION   NTDDI_VISTA
+            #endif
+        #endif
         #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
         #include <windows.h>
         #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header file */
@@ -2894,7 +2904,7 @@ struct WOLFSSL_BIO {
 #endif /* OPENSSL_EXTRA || OPENSSL_EXTRA_X509_SMALL */
 
 #if defined(WOLFSSL_HAVE_BIO_ADDR) && defined(OPENSSL_EXTRA)
-WOLFSSL_LOCAL socklen_t wolfSSL_BIO_ADDR_size(const WOLFSSL_BIO_ADDR *addr);
+WOLFSSL_LOCAL XSOCKLENT wolfSSL_BIO_ADDR_size(const WOLFSSL_BIO_ADDR *addr);
 #endif
 
 #define MAX_WRITE_IV_SZ 16 /* max size of client/server write_IV */

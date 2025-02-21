@@ -21960,12 +21960,13 @@ WOLFSSL_ASN1_STRING* wolfSSL_a2i_IPADDRESS(const char* ipa)
     if (ipa == NULL)
         return NULL;
 
+#ifdef WOLFSSL_IPV6
     if (XSTRSTR(ipa, ":") != NULL) {
         af = WOLFSSL_IP6;
         ipaSz = WOLFSSL_IP6_ADDR_LEN;
     }
-
-    buf[WOLFSSL_IP6_ADDR_LEN] = '\0';
+#endif
+    buf[ipaSz] = '\0';
     if (XINET_PTON(af, ipa, (void*)buf) != 1) {
         WOLFSSL_MSG("Error parsing IP address");
         return NULL;

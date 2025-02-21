@@ -83,6 +83,28 @@ This library contains implementation for the random number generator.
 
 #if defined(WOLFSSL_SGX)
     #include <sgx_trts.h>
+#elif defined(__WATCOMC__)
+    #ifdef __NT__
+        #ifdef WOLFSSL_IPV6
+            #if _WIN32_WINNT < _WIN32_WINNT_VISTA
+                #undef _WIN32_WINNT
+                #define _WIN32_WINNT _WIN32_WINNT_VISTA
+                #pragma message( "!!!! random.c set _WIN32_WINNT !!!!" )
+            #endif
+            #if NTDDI_VERSION < NTDDI_VISTA
+                #undef NTDDI_VERSION
+                #define NTDDI_VERSION   NTDDI_VISTA
+                #pragma message( "!!!! random.c set NTDDI_VERSION !!!!" )
+            #endif
+        #endif
+        #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
+        #include <windows.h>
+        #include <wincrypt.h>
+        #undef _WINSOCKAPI_
+    #else
+        #include <fcntl.h>
+        #include <unistd.h>
+    #endif
 #elif defined(USE_WINDOWS_API)
     #ifndef _WIN32_WINNT
         #define _WIN32_WINNT 0x0400

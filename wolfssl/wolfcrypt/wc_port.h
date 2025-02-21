@@ -329,6 +329,18 @@
         #include "FreeRTOS.h"
         #include "semphr.h"
         typedef SemaphoreHandle_t  wolfSSL_Mutex;
+    #elif defined(__WATCOMC__)
+        #if defined(__NT__)
+            typedef CRITICAL_SECTION wolfSSL_Mutex;
+        #elif defined(__OS2__)
+            typedef ULONG wolfSSL_Mutex;
+        #elif defined(__LINUX__)
+            #ifdef WOLFSSL_USE_RWLOCK
+                typedef pthread_rwlock_t wolfSSL_RwLock;
+            #endif
+            typedef pthread_mutex_t wolfSSL_Mutex;
+            #define WOLFSSL_MUTEX_INITIALIZER(lockname) PTHREAD_MUTEX_INITIALIZER
+        #endif
     #elif defined (RTTHREAD)
         #include "rtthread.h"
         typedef rt_mutex_t wolfSSL_Mutex;
@@ -407,9 +419,6 @@
         /* typedef User_Mutex wolfSSL_Mutex; */
     #elif defined(WOLFSSL_LINUXKM)
         /* definitions are in linuxkm/linuxkm_wc_port.h */
-    #elif defined(__WATCOMC__)
-        /* OS/2 */
-        typedef ULONG wolfSSL_Mutex;
     #else
         #error Need a mutex type in multithreaded mode
     #endif /* USE_WINDOWS_API */
