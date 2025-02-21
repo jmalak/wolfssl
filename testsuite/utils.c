@@ -37,7 +37,7 @@
 #if defined(_MSC_VER)
 #include <direct.h>
 #elif defined(__WATCOMC__)
-#ifdef __LINUX__
+#ifdef __UNIX__
 #include <unistd.h>
 #else
 #include <direct.h>
@@ -60,10 +60,7 @@ char* create_tmp_dir(char *tmpDir, int len)
 #ifdef _MSC_VER
     if (_mkdir(tmpDir) != 0)
         return NULL;
-#elif defined(__MINGW32__)
-    if (mkdir(tmpDir) != 0)
-        return NULL;
-#elif defined(__WATCOMC__) && !defined(__LINUX__)
+#elif defined(__MINGW32__) || defined(__WATCOMC__) && !defined(__UNIX__)
     if (mkdir(tmpDir) != 0)
         return NULL;
 #else
