@@ -85,13 +85,65 @@
     #endif /* HAVE_ECC */
 #endif /*HAVE_PK_CALLBACKS */
 
-#ifdef USE_WINDOWS_API
-    #include <winsock2.h>
-    #include <process.h>
-    #ifdef TEST_IPV6            /* don't require newer SDK for IPV4 */
-        #include <ws2tcpip.h>
-        #include <wspiapi.h>
+#ifdef __WATCOMC__
+    #if defined(__NT__)
+        #ifdef WOLFSSL_IPV6
+            #if _WIN32_WINNT < _WIN32_WINNT_VISTA
+                #undef _WIN32_WINNT
+                #define _WIN32_WINNT _WIN32_WINNT_VISTA
+                #pragma message( "!!!! test.h set _WIN32_WINNT !!!!" )
+            #endif
+            #if NTDDI_VERSION < NTDDI_VISTA
+                #undef NTDDI_VERSION
+                #define NTDDI_VERSION   NTDDI_VISTA
+                #pragma message( "!!!! test.h set NTDDI_VERSION !!!!" )
+            #endif
+            #ifdef TEST_IPV6            /* don't require newer SDK for IPV4 */
+                #include <ws2tcpip.h>
+                #include <wspiapi.h>
+            #else
+                #include <winsock2.h>
+            #endif
+        #else
+            #include <winsock.h>
+        #endif
+        #pragma message( "!!!! test.h !!!!" )
+        #define SOCKET_T SOCKET
+        #define XSLEEP_MS(t) Sleep(t)
+    #elif defined(__OS2__)
+        #include <netdb.h>
+        #include <sys/ioctl.h>
+        #include <tcpustd.h>
+        #include <i86.h>
+        typedef int socklen_t;
+        #define SOCKET_T int
+        #define XSLEEP_MS(t) delay(t)
+    #elif defined(__LINUX__)
+        #include <signal.h>  /* ignore SIGPIPE */
+        #include <netdb.h>
+        #include <fcntl.h>
+        #define SOCKET_T int
+        #define XSELECT_WAIT(x,y) do { \
+            struct timeval tv = {((x) + ((y) / 1000000)),((y) % 1000000)}; \
+            if ((select(0, NULL, NULL, NULL, &tv) < 0) && (errno != EINTR)) \
+                err_sys("select for XSELECT_WAIT failed."); \
+        } while (0)
+        #define XSLEEP_US(u) XSELECT_WAIT(0,u)
+        #define XSLEEP_MS(m) XSELECT_WAIT(0,(m)*1000)
     #endif
+    #define SNPRINTF snprintf
+#elif defined(USE_WINDOWS_API)
+    #include <process.h>
+    #ifdef WOLFSSL_IPV6
+        #ifdef TEST_IPV6            /* don't require newer SDK for IPV4 */
+            #include <ws2tcpip.h>
+            #include <wspiapi.h>
+        #else
+            #include <winsock2.h>
+        #endif
+    #else
+        #include <winsock.h>
+    #endif /* WOLFSSL_IPV6 */
     #define SOCKET_T SOCKET
     #define SNPRINTF _snprintf
     #define XSLEEP_MS(t) Sleep(t)
@@ -1429,7 +1481,7 @@ static WC_INLINE void tcp_socket(SOCKET_T* sockfd, int udp, int sctp)
         err_sys_with_errno("socket failed\n");
     }
 
-#ifndef USE_WINDOWS_API
+#if !defined(USE_WINDOWS_API) && !( defined(__WATCOMC__) && defined(__OS2__) )
 #ifdef SO_NOSIGPIPE
     {
         int       on = 1;
@@ -1443,9 +1495,9 @@ static WC_INLINE void tcp_socket(SOCKET_T* sockfd, int udp, int sctp)
     /* nothing to define */
 #elif defined(NETOS)
     /* TODO: signal(SIGPIPE, SIG_IGN); */
-#else  /* no S_NOSIGPIPE */
+#else  /* no SO_NOSIGPIPE */
     signal(SIGPIPE, SIG_IGN);
-#endif /* S_NOSIGPIPE */
+#endif /* SO_NOSIGPIPE */
 
 #if defined(TCP_NODELAY)
     if (!udp && !sctp)
@@ -1603,7 +1655,11 @@ static WC_INLINE void tcp_listen(SOCKET_T* sockfd, word16* port, int useAnyAddr,
 #endif
 #endif
 
+#if defined(__WATCOMC__) && (__WATCOMC__ < 1300)
+    if (bind(*sockfd, (struct sockaddr*)&addr, sizeof(addr)) != 0)
+#else
     if (bind(*sockfd, (const struct sockaddr*)&addr, sizeof(addr)) != 0)
+#endif
         err_sys_with_errno("tcp bind failed");
     if (!udp) {
         #ifdef WOLFSSL_KEIL_TCP_NET
@@ -1683,7 +1739,11 @@ static WC_INLINE void udp_accept(SOCKET_T* sockfd, SOCKET_T* clientfd,
 #endif
 #endif
 
+#if defined(__WATCOMC__) && (__WATCOMC__ < 1300)
+    if (bind(*sockfd, (struct sockaddr*)&addr, sizeof(addr)) != 0)
+#else
     if (bind(*sockfd, (const struct sockaddr*)&addr, sizeof(addr)) != 0)
+#endif
         err_sys_with_errno("tcp bind failed");
 
     #if !defined(USE_WINDOWS_API) && !defined(WOLFSSL_TIRTOS) && \
@@ -1801,6 +1861,11 @@ static WC_INLINE void tcp_set_nonblocking(SOCKET_T* sockfd)
         || defined (WOLFSSL_TIRTOS)|| defined(WOLFSSL_VXWORKS) \
         || defined(WOLFSSL_ZEPHYR)
          /* non blocking not supported, for now */
+    #elif defined(__WATCOMC__) && defined(__OS2__)
+        unsigned long blocking = 1;
+        int ret = ioctl(*sockfd, FIONBIO, &blocking);
+        if (ret < 0)
+            err_sys_with_errno("ioctl socket failed");
     #else
         int flags = fcntl(*sockfd, F_GETFL, 0);
         if (flags < 0)
@@ -1822,6 +1887,11 @@ static WC_INLINE void tcp_set_blocking(SOCKET_T* sockfd)
         || defined (WOLFSSL_TIRTOS)|| defined(WOLFSSL_VXWORKS) \
         || defined(WOLFSSL_ZEPHYR)
          /* non blocking not supported, for now */
+    #elif defined(__WATCOMC__) && defined(__OS2__)
+        unsigned long blocking = 0;
+        int ret = ioctl(*sockfd, FIONBIO, &blocking);
+        if (ret < 0)
+            err_sys_with_errno("ioctl socket failed");
     #else
         int flags = fcntl(*sockfd, F_GETFL, 0);
         if (flags < 0)
@@ -2148,6 +2218,9 @@ static WC_INLINE unsigned int my_psk_client_cs_cb(WOLFSSL* ssl,
     extern double current_time();
 #elif defined(WOLFSSL_ZEPHYR)
     extern double current_time();
+#elif defined(__WATCOMC__) && ( (__WATCOMC__ < 1300) || defined(__OS2__) )
+    #include <time.h>
+    static WC_INLINE double current_time(int reset) { (void)reset; return ((double)clock())/CLOCKS_PER_SEC; }
 #else
 
 #if !defined(WOLFSSL_MDK_ARM) && !defined(WOLFSSL_KEIL_TCP_NET) && !defined(WOLFSSL_CHIBIOS)

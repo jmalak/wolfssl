@@ -26,7 +26,7 @@
 #ifndef WOLFSSL_IO_H
 #define WOLFSSL_IO_H
 
-#include <wolfssl/ssl.h>
+//#include <wolfssl/ssl.h>
 
 #ifdef __cplusplus
     extern "C" {
@@ -57,7 +57,43 @@
     #include "zlib.h"
 #endif
 
-#ifndef USE_WINDOWS_API
+#ifdef __WATCOMC__
+    #if defined(__NT__)
+        #ifdef WOLFSSL_IPV6
+            #if _WIN32_WINNT < _WIN32_WINNT_VISTA
+                #undef _WIN32_WINNT
+                #define _WIN32_WINNT _WIN32_WINNT_VISTA
+                #pragma message( "!!!! wolfio.h set _WIN32_WINNT !!!!" )
+            #endif
+            #if NTDDI_VERSION < NTDDI_VISTA
+                #undef NTDDI_VERSION
+                #define NTDDI_VERSION   NTDDI_VISTA
+                #pragma message( "!!!! wolfio.h set NTDDI_VERSION !!!!" )
+            #endif
+            #pragma message( "!!!! ws2tcpip.h wolfio.h !!!!" )
+            #include <ws2tcpip.h> /* required for InetPton */
+        #else
+            #pragma message( "!!!! winsock.h wolfio.h !!!!" )
+            #include <winsock.h>
+            #define AF_INET6	AF_MAX
+        #endif
+    #else
+        #include <errno.h>
+        #if defined(__OS2__)
+            #include <os2.h>
+            #include <os2/types.h>
+            #include <nerrno.h>
+        #else
+            #include <unistd.h>
+        #endif
+        #include <sys/types.h>
+        #include <sys/socket.h>
+        #include <arpa/inet.h>
+        #include <netinet/in.h>
+    #endif
+#elif defined(USE_WINDOWS_API)
+    #include <ws2tcpip.h>
+#else
     #if defined(WOLFSSL_LWIP) && !defined(WOLFSSL_APACHE_MYNEWT)
         /* lwIP needs to be configured to use sockets API in this mode */
         /* LWIP_SOCKET 1 in lwip/opt.h or in build */
@@ -152,26 +188,6 @@
         #include <fclfcntl.h>
     #elif defined(WOLFSSL_EMNET)
         #include <IP/IP.h>
-    #elif defined(__WATCOMC__)
-        #if defined(__OS2__)
-            #include <errno.h>
-            #include <os2.h>
-            #include <sys/types.h>
-            #include <os2/types.h>
-            #include <sys/socket.h>
-            #include <arpa/inet.h>
-            #include <netinet/in.h>
-            #include <nerrno.h>
-
-            typedef int socklen_t;
-        #elif defined(__LINUX__)
-            #include <sys/types.h>
-            #include <errno.h>
-            #include <unistd.h>
-            #include <sys/socket.h>
-            #include <arpa/inet.h>
-            #include <netinet/in.h>
-        #endif
     #elif !defined(WOLFSSL_NO_SOCK)
         #include <sys/types.h>
         #include <errno.h>
@@ -416,6 +432,16 @@
 #elif defined(WOLFSSL_SGX)
     #define SEND_FUNCTION send
     #define RECV_FUNCTION recv
+#elif defined(__WATCOMC__)
+    #define SEND_FUNCTION send
+    #define RECV_FUNCTION recv
+    #if !defined(WOLFSSL_NO_SOCK)
+        #if !defined(__NT__)
+            #if !defined(HAVE_SOCKADDR)
+                #define HAVE_SOCKADDR
+            #endif
+        #endif
+    #endif
 #else
     #define SEND_FUNCTION send
     #define RECV_FUNCTION recv
@@ -426,7 +452,13 @@
 
 #ifndef WOLFSSL_NO_SOCK
     #ifndef XSOCKLENT
-        #ifdef USE_WINDOWS_API
+        #ifdef __WATCOMC__
+            #if defined(__UNIX__)
+                #define XSOCKLENT socklen_t
+            #else
+                #define XSOCKLENT int
+            #endif
+        #elif defined(USE_WINDOWS_API)
             #define XSOCKLENT int
         #elif defined(NUCLEUS_PLUS_2_3)
             typedef int socklen_t;
@@ -445,9 +477,9 @@
 
     /* Socket Addr Support */
     #ifdef HAVE_SOCKADDR
-    #ifndef HAVE_SOCKADDR_DEFINED
-        typedef struct sockaddr         SOCKADDR;
-    #endif
+        #ifndef HAVE_SOCKADDR_DEFINED
+            typedef struct sockaddr     SOCKADDR;
+        #endif
         typedef struct sockaddr_storage SOCKADDR_S;
         typedef struct sockaddr_in      SOCKADDR_IN;
         #ifdef WOLFSSL_IPV6
@@ -455,7 +487,7 @@
         #endif
         #if defined(HAVE_SYS_UN_H) && !defined(WOLFSSL_NO_SOCKADDR_UN)
             #include <sys/un.h>
-            typedef struct sockaddr_un SOCKADDR_UN;
+            typedef struct sockaddr_un  SOCKADDR_UN;
         #endif
         typedef struct hostent          HOSTENT;
     #endif /* HAVE_SOCKADDR */
@@ -856,21 +888,45 @@ WOLFSSL_API void wolfSSL_SetIOWriteFlags(WOLFSSL* ssl, int flags);
 
 
 #ifndef XINET_NTOP
-    #define XINET_NTOP(a,b,c,d) inet_ntop((a),(b),(c),(d))
-    #ifdef USE_WINDOWS_API /* Windows-friendly definition */
-        #undef  XINET_NTOP
+    #ifdef __WATCOMC__
+        #if defined(__OS2__)
+            #define XINET_NTOP(a,b,c,d) inet_ntop((a),(b),(c),(d))
+        #elif defined(__NT__)
+            #ifdef WOLFSSL_IPV6
+                #define XINET_NTOP(a,b,c,d) InetNtop((a),(b),(c),(d))
+            #else
+                #define XINET_NTOP(a,b,c,d) strncpy(inet_ntoa((b)),(c),(d))
+            #endif
+        #else
+            #define XINET_NTOP(a,b,c,d) strncpy(inet_ntoa((b)),(c),(d))
+        #endif
+    #elif defined(USE_WINDOWS_API) /* Windows-friendly definition */
         #define XINET_NTOP(a,b,c,d) InetNtop((a),(b),(c),(d))
+    #else
+        #define XINET_NTOP(a,b,c,d) inet_ntop((a),(b),(c),(d))
     #endif
 #endif
 #ifndef XINET_PTON
-    #define XINET_PTON(a,b,c)   inet_pton((a),(b),(c))
-    #ifdef USE_WINDOWS_API /* Windows-friendly definition */
-        #undef  XINET_PTON
+    #ifdef __WATCOMC__
+        #if defined(__OS2__)
+            #define XINET_PTON(a,b,c)   inet_pton((a),(b),(c))
+        #elif defined(__NT__)
+            #ifdef WOLFSSL_IPV6
+                #define XINET_PTON(a,b,c)   InetPton((a),(b),(c))
+            #else
+                #define XINET_PTON(a,b,c)   *(unsigned *)(c)=inet_addr((b)),(*(unsigned *)(c)!=(unsigned)-1)
+            #endif
+        #else
+            #define XINET_PTON(a,b,c)   *(unsigned *)(c)=inet_addr((b)),(*(unsigned *)(c)!=(unsigned)-1)
+        #endif
+    #elif defined(USE_WINDOWS_API) /* Windows-friendly definition */
         #if defined(__MINGW64__) && !defined(UNICODE)
             #define XINET_PTON(a,b,c)   InetPton((a),(b),(c))
         #else
             #define XINET_PTON(a,b,c)   InetPton((a),(PCWSTR)(b),(c))
         #endif
+    #else
+        #define XINET_PTON(a,b,c)   inet_pton((a),(b),(c))
     #endif
 #endif
 
@@ -905,7 +961,6 @@ WOLFSSL_API void wolfSSL_SetIOWriteFlags(WOLFSSL* ssl, int flags);
 #ifndef WOLFSSL_IP6
     #define WOLFSSL_IP6 AF_INET6
 #endif
-
 
 #ifdef __cplusplus
     }  /* extern "C" */

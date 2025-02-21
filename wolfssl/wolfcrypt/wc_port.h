@@ -121,16 +121,38 @@
 
 /* THREADING/MUTEX SECTION */
 #if defined(__WATCOMC__)
-    #if !defined(SINGLE_THREADED)
-        #if defined(USE_WINDOWS_API)
-            #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
-            #include <windows.h>
+    #if defined(__NT__)
+        #ifdef WOLFSSL_IPV6
+            #if _WIN32_WINNT < _WIN32_WINNT_VISTA
+                #undef _WIN32_WINNT
+                #define _WIN32_WINNT _WIN32_WINNT_VISTA
+                #pragma message( "!!!! wc_port.h set _WIN32_WINNT !!!!" )
+            #endif
+            #if NTDDI_VERSION < NTDDI_VISTA
+                #undef NTDDI_VERSION
+                #define NTDDI_VERSION   NTDDI_VISTA
+                #pragma message( "!!!! wc_port.h set NTDDI_VERSION !!!!" )
+            #endif
+        #endif
+        #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
+        #include <windows.h>
+        #undef _WINSOCKAPI_
+        #pragma message( "!!!! wc_port.h !!!!" )
+        #if defined(SINGLE_THREADED)
+        #else
             #include <process.h>
-        #elif defined(__OS2__)
+        #endif
+    #elif defined(__OS2__)
+        #if defined(SINGLE_THREADED)
+            #include <os2.h>
+        #else
             #define INCL_DOSSEMAPHORES
             #define INCL_DOSPROCESS
             #include <os2.h>
             #include <process.h>
+        #endif
+    #else
+        #if defined(SINGLE_THREADED)
         #else
             #ifndef WOLFSSL_USER_MUTEX
                 #define WOLFSSL_PTHREADS
@@ -138,13 +160,6 @@
             #if defined(WOLFSSL_PTHREADS)
                 #include <pthread.h>
             #endif
-        #endif
-    #else
-        #if defined(USE_WINDOWS_API)
-            #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
-            #include <windows.h>
-        #elif defined(__OS2__)
-            #include <os2.h>
         #endif
     #endif
 #elif defined(SINGLE_THREADED) && defined(NO_FILESYSTEM)
@@ -162,12 +177,8 @@
         #if !defined(WOLFSSL_SGX) && !defined(WOLFSSL_NOT_WINDOWS_API)
             #define _WINSOCKAPI_ /* block inclusion of winsock.h header file. */
             #include <windows.h>
-            /* winsock2.h expects _WINSOCKAPI_ to be undef, and defines it. */
+            /* MINGW winsock2.h expects _WINSOCKAPI_ to be undef, and defines it. */
             #undef _WINSOCKAPI_
-            #ifndef WOLFSSL_USER_IO
-                #include <winsock2.h>
-                #include <ws2tcpip.h> /* required for InetPton */
-            #endif
         #endif /* WOLFSSL_SGX */
     #endif
     #if !defined(SINGLE_THREADED) && !defined(_WIN32_WCE)
@@ -320,6 +331,18 @@
         #include "FreeRTOS.h"
         #include "semphr.h"
         typedef SemaphoreHandle_t  wolfSSL_Mutex;
+    #elif defined(__WATCOMC__)
+        #if defined(__NT__)
+            typedef CRITICAL_SECTION wolfSSL_Mutex;
+        #elif defined(__OS2__)
+            typedef ULONG wolfSSL_Mutex;
+        #elif defined(__LINUX__)
+            #ifdef WOLFSSL_USE_RWLOCK
+                typedef pthread_rwlock_t wolfSSL_RwLock;
+            #endif
+            typedef pthread_mutex_t wolfSSL_Mutex;
+            #define WOLFSSL_MUTEX_INITIALIZER(lockname) PTHREAD_MUTEX_INITIALIZER
+        #endif
     #elif defined (RTTHREAD)
         #include "rtthread.h"
         typedef rt_mutex_t wolfSSL_Mutex;
@@ -398,9 +421,6 @@
         /* typedef User_Mutex wolfSSL_Mutex; */
     #elif defined(WOLFSSL_LINUXKM)
         /* definitions are in linuxkm/linuxkm_wc_port.h */
-    #elif defined(__WATCOMC__)
-        /* OS/2 */
-        typedef ULONG wolfSSL_Mutex;
     #else
         #error Need a mutex type in multithreaded mode
     #endif /* USE_WINDOWS_API */
@@ -925,7 +945,27 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
 
     #if !defined(NO_WOLFSSL_DIR)\
         && !defined(WOLFSSL_NUCLEUS) && !defined(WOLFSSL_NUCLEUS_1_2)
-        #if defined(USE_WINDOWS_API)
+        #if defined(__WATCOMC__)
+            #include <unistd.h>
+            #include <sys/stat.h>
+            #define XS_ISREG(s) S_ISREG(s)
+            #define XWRITE      write
+            #define XREAD       read
+            #define XCLOSE      close
+            #define XSTAT       stat
+            #ifndef NO_WOLFSSL_DIR
+                #if defined(__UNIX__)
+                    #include <dirent.h>
+                #else
+                    #include <direct.h>
+                #endif
+            #endif
+            #if defined(__UNIX__)
+                #define SEPARATOR_CHAR ':'
+            #else
+                #define SEPARATOR_CHAR ';'
+            #endif
+        #elif defined(USE_WINDOWS_API)
             #include <io.h>
             #include <sys/stat.h>
             #ifndef XSTAT
@@ -982,7 +1022,7 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
             #define XSTAT_TYPE struct XSTAT
         #endif
     #endif /* !NO_WOLFSSL_DIR !WOLFSSL_NUCLEUS !WOLFSSL_NUCLEUS_1_2 */
-#endif
+#endif /* EBSNET */
 
     #ifndef MAX_FILENAME_SZ
         #define MAX_FILENAME_SZ (260 + 1) /* max file name length */
