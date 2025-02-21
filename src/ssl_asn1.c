@@ -4404,7 +4404,7 @@ static int wolfssl_get_current_time_tm(struct tm* tm)
     if (ret == 1) {
         /* Get current Unix Time GMT. */
         currentTime = wc_Time(0);
-        if (currentTime <= 0) {
+        if (currentTime == (time_t)-1) {
             WOLFSSL_MSG("Failed to get current time.");
             ret = 0;
         }
