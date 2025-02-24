@@ -85,21 +85,43 @@
     #endif /* HAVE_ECC */
 #endif /*HAVE_PK_CALLBACKS */
 
-#ifdef USE_WINDOWS_API
-    #include <winsock2.h>
-    #include <process.h>
-    #ifdef TEST_IPV6            /* don't require newer SDK for IPV4 */
-        #include <ws2tcpip.h>
-        #include <wspiapi.h>
+#ifdef __WATCOMC__
+    #define SNPRINTF snprintf
+    #if defined(__NT__)
+        #define XSLEEP_MS(t) Sleep(t)
+    #elif defined(__OS2__)
+        #include <sys/ioctl.h>
+        #include <netdb.h>
+        #include <i86.h>
+        #define XSLEEP_MS(t) delay(t)
+    #elif defined(__UNIX__)
+        #include <string.h>
+        #include <netdb.h>
+        #include <netinet/tcp.h>
+        #ifndef WOLFSSL_NDS
+            #include <sys/ioctl.h>
+        #endif
+        #include <sys/time.h>
+        #ifdef HAVE_PTHREAD
+            #include <pthread.h>
+        #endif
+        #include <signal.h>  /* ignore SIGPIPE */
+
+        #define XSELECT_WAIT(x,y) do { \
+            struct timeval tv = {((x) + ((y) / 1000000)),((y) % 1000000)}; \
+            if ((select(0, NULL, NULL, NULL, &tv) < 0) && (errno != EINTR)) \
+                err_sys("select for XSELECT_WAIT failed."); \
+        } while (0)
+        #define XSLEEP_US(u) XSELECT_WAIT(0,u)
+        #define XSLEEP_MS(m) XSELECT_WAIT(0,(m)*1000)
     #endif
-    #define SOCKET_T SOCKET
+#elif defined(USE_WINDOWS_API)
+    #include <process.h>
     #define SNPRINTF _snprintf
     #define XSLEEP_MS(t) Sleep(t)
 #elif defined(WOLFSSL_MDK_ARM) || defined(WOLFSSL_KEIL_TCP_NET)
     #include <string.h>
     #include "rl_net.h"
-    #define SOCKET_T int
-    typedef int socklen_t ;
     #define inet_addr wolfSSL_inet_addr
     static unsigned long wolfSSL_inet_addr(const char *cp)
     {
@@ -129,7 +151,6 @@
         int h_length; /* length of address */
         char **h_addr_list; /* list of addresses from name server */
     };
-    #define SOCKET_T int
     #define XSLEEP_MS(t) Task_sleep(t/1000)
 #elif defined(WOLFSSL_VXWORKS)
     #include <hostLib.h>
@@ -147,7 +168,6 @@
     #endif
     #include <netdb.h>
     #include <pthread.h>
-    #define SOCKET_T int
 #elif defined(WOLFSSL_ZEPHYR)
     #include <version.h>
     #include <string.h>
@@ -169,7 +189,6 @@
             #include <posix/sys/select.h>
         #endif
     #endif
-    #define SOCKET_T int
     #define SOL_SOCKET 1
     #define WOLFSSL_USE_GETADDRINFO
 
@@ -222,10 +241,6 @@
         #include <netdb.h>
     #endif
 #endif
-    #ifdef FREESCALE_MQX
-        typedef int socklen_t ;
-    #endif
-    #define SOCKET_T int
     #ifndef SO_NOSIGPIPE
         #include <signal.h>  /* ignore SIGPIPE */
     #endif
@@ -239,6 +254,12 @@
     #define XSLEEP_US(u) XSELECT_WAIT(0,u)
     #define XSLEEP_MS(m) XSELECT_WAIT(0,(m)*1000)
 #endif /* USE_WINDOWS_API */
+
+#ifdef XSOCKLEN_TYPE
+    typedef XSOCKLEN_TYPE   socklen_t;
+#elif defined(USE_WINDOWS_API)
+    typedef int             socklen_t;
+#endif
 
 #ifndef XSLEEP_MS
     #define XSLEEP_MS(t) sleep(t/1000)
@@ -277,38 +298,27 @@
 
 /* Socket Handling */
 #ifndef WOLFSSL_SOCKET_INVALID
-#ifdef USE_WINDOWS_API
-    #define WOLFSSL_SOCKET_INVALID  ((SOCKET_T)INVALID_SOCKET)
-#elif defined(WOLFSSL_TIRTOS)
-    #define WOLFSSL_SOCKET_INVALID  ((SOCKET_T)-1)
-#else
-    #define WOLFSSL_SOCKET_INVALID  (SOCKET_T)(-1)
-#endif
+    #define WOLFSSL_SOCKET_INVALID  ((SOCKET_T)SOCKET_INVALID)
 #endif /* WOLFSSL_SOCKET_INVALID */
 
 #ifndef WOLFSSL_SOCKET_IS_INVALID
-#if defined(USE_WINDOWS_API) || defined(WOLFSSL_TIRTOS)
-    #define WOLFSSL_SOCKET_IS_INVALID(s)  ((SOCKET_T)(s) == WOLFSSL_SOCKET_INVALID)
-#else
-    #define WOLFSSL_SOCKET_IS_INVALID(s)  ((SOCKET_T)(s) < WOLFSSL_SOCKET_INVALID)
-#endif
-#endif /* WOLFSSL_SOCKET_IS_INVALID */
-
-#if defined(__MACH__) || defined(USE_WINDOWS_API)
-    #ifndef _SOCKLEN_T
-        typedef int socklen_t;
+    #if defined(USE_WINDOWS_API) || defined(WOLFSSL_TIRTOS)
+        #define WOLFSSL_SOCKET_IS_INVALID(s) \
+                ((SOCKET_T)(s) == WOLFSSL_SOCKET_INVALID)
+    #else
+        #define WOLFSSL_SOCKET_IS_INVALID(s) \
+                ((SOCKET_T)(s) < WOLFSSL_SOCKET_INVALID)
     #endif
-#endif
-
+#endif /* WOLFSSL_SOCKET_IS_INVALID */
 
 /* HPUX doesn't use socklent_t for third parameter to accept, unless
    _XOPEN_SOURCE_EXTENDED is defined */
 #if !defined(__hpux__) && !defined(WOLFSSL_MDK_ARM) && !defined(WOLFSSL_IAR_ARM)\
  && !defined(WOLFSSL_ROWLEY_ARM)  && !defined(WOLFSSL_KEIL_TCP_NET)
-    typedef socklen_t* ACCEPT_THIRD_T;
+    typedef XSOCKLENT* ACCEPT_THIRD_T;
 #else
     #if defined _XOPEN_SOURCE_EXTENDED
-        typedef socklen_t* ACCEPT_THIRD_T;
+        typedef XSOCKLENT* ACCEPT_THIRD_T;
     #else
         typedef int*       ACCEPT_THIRD_T;
     #endif
@@ -1433,7 +1443,7 @@ static WC_INLINE void tcp_socket(SOCKET_T* sockfd, int udp, int sctp)
 #ifdef SO_NOSIGPIPE
     {
         int       on = 1;
-        socklen_t len = sizeof(on);
+        XSOCKLENT len = sizeof(on);
         int       res = setsockopt(*sockfd, SOL_SOCKET, SO_NOSIGPIPE, &on, len);
         if (res < 0)
             err_sys_with_errno("setsockopt SO_NOSIGPIPE failed\n");
@@ -1451,7 +1461,7 @@ static WC_INLINE void tcp_socket(SOCKET_T* sockfd, int udp, int sctp)
     if (!udp && !sctp)
     {
         int       on = 1;
-        socklen_t len = sizeof(on);
+        XSOCKLENT len = sizeof(on);
         int       res = setsockopt(*sockfd, IPPROTO_TCP, TCP_NODELAY, &on, len);
         if (res < 0)
             err_sys_with_errno("setsockopt TCP_NODELAY failed\n");
@@ -1587,7 +1597,7 @@ static WC_INLINE void tcp_listen(SOCKET_T* sockfd, word16* port, int useAnyAddr,
                    && !defined(WOLFSSL_KEIL_TCP_NET) && !defined(WOLFSSL_ZEPHYR)
     {
         int       res, on  = 1;
-        socklen_t len = sizeof(on);
+        XSOCKLENT len = sizeof(on);
         res = setsockopt(*sockfd, SOL_SOCKET, SO_REUSEADDR, &on, len);
         if (res < 0)
             err_sys_with_errno("setsockopt SO_REUSEADDR failed\n");
@@ -1595,7 +1605,7 @@ static WC_INLINE void tcp_listen(SOCKET_T* sockfd, word16* port, int useAnyAddr,
 #ifdef SO_REUSEPORT
     {
         int       res, on  = 1;
-        socklen_t len = sizeof(on);
+        XSOCKLENT len = sizeof(on);
         res = setsockopt(*sockfd, SOL_SOCKET, SO_REUSEPORT, &on, len);
         if (res < 0)
             err_sys_with_errno("setsockopt SO_REUSEPORT failed\n");
@@ -1617,7 +1627,7 @@ static WC_INLINE void tcp_listen(SOCKET_T* sockfd, word16* port, int useAnyAddr,
     #if !defined(USE_WINDOWS_API) && !defined(WOLFSSL_TIRTOS) \
                                                      && !defined(WOLFSSL_ZEPHYR)
         if (*port == 0) {
-            socklen_t len = sizeof(addr);
+            XSOCKLENT len = sizeof(addr);
             if (getsockname(*sockfd, (struct sockaddr*)&addr, &len) == 0) {
                 #ifndef TEST_IPV6
                     *port = XNTOHS(addr.sin_port);
@@ -1636,7 +1646,7 @@ static WC_INLINE int udp_read_connect(SOCKET_T sockfd)
     SOCKADDR_IN_T cliaddr;
     byte          b[1500];
     int           n;
-    socklen_t     len = sizeof(cliaddr);
+    XSOCKLENT     len = sizeof(cliaddr);
 
     n = (int)recvfrom(sockfd, (char*)b, sizeof(b), MSG_PEEK,
                       (struct sockaddr*)&cliaddr, &len);
@@ -1667,7 +1677,7 @@ static WC_INLINE void udp_accept(SOCKET_T* sockfd, SOCKET_T* clientfd,
                    && !defined(WOLFSSL_KEIL_TCP_NET) && !defined(WOLFSSL_ZEPHYR)
     {
         int       res, on  = 1;
-        socklen_t len = sizeof(on);
+        XSOCKLENT len = sizeof(on);
         res = setsockopt(*sockfd, SOL_SOCKET, SO_REUSEADDR, &on, len);
         if (res < 0)
             err_sys_with_errno("setsockopt SO_REUSEADDR failed\n");
@@ -1675,7 +1685,7 @@ static WC_INLINE void udp_accept(SOCKET_T* sockfd, SOCKET_T* clientfd,
 #ifdef SO_REUSEPORT
     {
         int       res, on  = 1;
-        socklen_t len = sizeof(on);
+        XSOCKLENT len = sizeof(on);
         res = setsockopt(*sockfd, SOL_SOCKET, SO_REUSEPORT, &on, len);
         if (res < 0)
             err_sys_with_errno("setsockopt SO_REUSEPORT failed\n");
@@ -1689,7 +1699,7 @@ static WC_INLINE void udp_accept(SOCKET_T* sockfd, SOCKET_T* clientfd,
     #if !defined(USE_WINDOWS_API) && !defined(WOLFSSL_TIRTOS) && \
            !defined(SINGLE_THREADED)
         if (port == 0) {
-            socklen_t len = sizeof(addr);
+            XSOCKLENT len = sizeof(addr);
             if (getsockname(*sockfd, (struct sockaddr*)&addr, &len) == 0) {
                 #ifndef TEST_IPV6
                     port = XNTOHS(addr.sin_port);
@@ -1727,7 +1737,7 @@ static WC_INLINE void udp_accept(SOCKET_T* sockfd, SOCKET_T* clientfd,
 static WC_INLINE void tcp_accept(SOCKET_T* sockfd, SOCKET_T* clientfd,
                               func_args* args, word16 port, int useAnyAddr,
                               int udp, int sctp, int ready_file, int do_listen,
-                              SOCKADDR_IN_T *client_addr, socklen_t *client_len)
+                              SOCKADDR_IN_T *client_addr, XSOCKLENT *client_len)
 {
     tcp_ready* ready = NULL;
 
