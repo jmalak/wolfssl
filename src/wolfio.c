@@ -51,60 +51,56 @@ int Nucleus_Net_Errno;
 #endif
 
 #if defined(USE_WOLFSSL_IO) || defined(HAVE_HTTP_CLIENT)
-    #ifdef USE_WINDOWS_API
-        #include <winsock2.h>
-    #else
-        #if defined(WOLFSSL_LWIP) && !defined(WOLFSSL_APACHE_MYNEWT)
-        #elif defined(ARDUINO)
-        #elif defined(FREESCALE_MQX)
-        #elif defined(FREESCALE_KSDK_MQX)
-        #elif (defined(WOLFSSL_MDK_ARM) || defined(WOLFSSL_KEIL_TCP_NET))
-        #elif defined(WOLFSSL_CMSIS_RTOS)
-        #elif defined(WOLFSSL_CMSIS_RTOSv2)
-        #elif defined(WOLFSSL_TIRTOS)
-        #elif defined(FREERTOS_TCP)
-        #elif defined(WOLFSSL_IAR_ARM)
-        #elif defined(HAVE_NETX_BSD)
-        #elif defined(WOLFSSL_VXWORKS)
-        #elif defined(WOLFSSL_NUCLEUS_1_2)
-        #elif defined(WOLFSSL_LINUXKM)
-            /* the requisite linux/net.h is included in wc_port.h, with incompatible warnings masked out. */
-        #elif defined(WOLFSSL_ATMEL)
-        #elif defined(INTIME_RTOS)
-            #include <netdb.h>
-        #elif defined(WOLFSSL_PRCONNECT_PRO)
-            #include <netdb.h>
-            #include <sys/ioctl.h>
-        #elif defined(WOLFSSL_SGX)
-        #elif defined(WOLFSSL_APACHE_MYNEWT) && !defined(WOLFSSL_LWIP)
-        #elif defined(WOLFSSL_DEOS)
-        #elif defined(WOLFSSL_ZEPHYR)
-        #elif defined(MICROCHIP_PIC32)
-        #elif defined(HAVE_NETX)
-        #elif defined(FUSION_RTOS)
-        #elif !defined(WOLFSSL_NO_SOCK)
-            #if defined(HAVE_RTP_SYS)
-            #elif defined(EBSNET)
-            #elif defined(NETOS)
-            #elif !defined(DEVKITPRO) && !defined(WOLFSSL_PICOTCP) \
-                    && !defined(WOLFSSL_CONTIKI) && !defined(WOLFSSL_WICED) \
-                    && !defined(WOLFSSL_GNRC) && !defined(WOLFSSL_RIOT_OS)
-                #ifdef HAVE_NETDB_H
-                    #include <netdb.h>
-                #endif
-                #ifdef __PPU
-                    #include <netex/errno.h>
-                #else
-                    #ifdef HAVE_SYS_IOCTL_H
-                        #include <sys/ioctl.h>
-                    #endif
+    #ifdef __WATCOMC__
+    #elif defined(USE_WINDOWS_API)
+    #elif defined(WOLFSSL_LWIP) && !defined(WOLFSSL_APACHE_MYNEWT)
+    #elif defined(ARDUINO)
+    #elif defined(FREESCALE_MQX)
+    #elif defined(FREESCALE_KSDK_MQX)
+    #elif (defined(WOLFSSL_MDK_ARM) || defined(WOLFSSL_KEIL_TCP_NET))
+    #elif defined(WOLFSSL_CMSIS_RTOS)
+    #elif defined(WOLFSSL_CMSIS_RTOSv2)
+    #elif defined(WOLFSSL_TIRTOS)
+    #elif defined(FREERTOS_TCP)
+    #elif defined(WOLFSSL_IAR_ARM)
+    #elif defined(HAVE_NETX_BSD)
+    #elif defined(WOLFSSL_VXWORKS)
+    #elif defined(WOLFSSL_NUCLEUS_1_2)
+    #elif defined(WOLFSSL_LINUXKM)
+        /* the requisite linux/net.h is included in wc_port.h, with incompatible warnings masked out. */
+    #elif defined(WOLFSSL_ATMEL)
+    #elif defined(INTIME_RTOS)
+        #include <netdb.h>
+    #elif defined(WOLFSSL_PRCONNECT_PRO)
+        #include <netdb.h>
+        #include <sys/ioctl.h>
+    #elif defined(WOLFSSL_SGX)
+    #elif defined(WOLFSSL_APACHE_MYNEWT) && !defined(WOLFSSL_LWIP)
+    #elif defined(WOLFSSL_DEOS)
+    #elif defined(WOLFSSL_ZEPHYR)
+    #elif defined(MICROCHIP_PIC32)
+    #elif defined(HAVE_NETX)
+    #elif defined(FUSION_RTOS)
+    #elif !defined(WOLFSSL_NO_SOCK)
+        #if defined(HAVE_RTP_SYS)
+        #elif defined(EBSNET)
+        #elif defined(NETOS)
+        #elif !defined(DEVKITPRO) && !defined(WOLFSSL_PICOTCP) \
+                && !defined(WOLFSSL_CONTIKI) && !defined(WOLFSSL_WICED) \
+                && !defined(WOLFSSL_GNRC) && !defined(WOLFSSL_RIOT_OS)
+            #ifdef HAVE_NETDB_H
+                #include <netdb.h>
+            #endif
+            #ifdef __PPU
+                #include <netex/errno.h>
+            #else
+                #ifdef HAVE_SYS_IOCTL_H
+                    #include <sys/ioctl.h>
                 #endif
             #endif
         #endif
-
-    #endif /* USE_WINDOWS_API */
+    #endif
 #endif /* defined(USE_WOLFSSL_IO) || defined(HAVE_HTTP_CLIENT) */
-
 
 #if defined(HAVE_HTTP_CLIENT)
     #include <stdlib.h>   /* strtol() */
@@ -245,8 +241,12 @@ static int TranslateIoReturnCode(int err, SOCKET_T sd, int direction)
         return WOLFSSL_CBIO_ERR_CONN_CLOSE;
     }
 
-#if defined(_WIN32) && !defined(__WATCOMC__)
-    strcpy_s(errstr, sizeof(errstr), "\tGeneral error: ");
+#if defined(_WIN32)
+    #ifdef __WATCOMC__
+        strcpy(errstr, "\tGeneral error: ");
+    #else
+        strcpy_s(errstr, sizeof(errstr), "\tGeneral error: ");
+    #endif
     errstr_offset = strlen(errstr);
     FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
         NULL,

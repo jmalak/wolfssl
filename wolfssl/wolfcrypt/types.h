@@ -419,7 +419,9 @@ typedef struct w64wrapper {
 
     /* set up thread local storage if available */
     #ifdef HAVE_THREAD_LS
-        #if defined(_MSC_VER) || defined(__WATCOMC__)
+        #if defined(_MSC_VER)
+            #define THREAD_LS_T __declspec(thread)
+        #elif defined(__WATCOMC__)
             #define THREAD_LS_T __declspec(thread)
         /* Thread local storage only in FreeRTOS v8.2.1 and higher */
         #elif defined(FREERTOS) || defined(FREERTOS_TCP) || \
@@ -1754,6 +1756,12 @@ typedef struct w64wrapper {
 
     #if defined(__IAR_SYSTEMS_ICC__) || defined(__GNUC__)
         #define WC_NORETURN __attribute__((noreturn))
+    #elif defined(__WATCOMC__)
+        #if __WATCOMC__ < 1300
+            #define WC_NORETURN
+        #else
+            #define WC_NORETURN __declspec(aborts)
+        #endif
     #else
         #define WC_NORETURN
     #endif

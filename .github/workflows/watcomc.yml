@@ -6,6 +6,7 @@ on:
     branches: [ 'master', 'main', 'release/**' ]
   pull_request:
     branches: [ '*' ]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,54 +15,70 @@ concurrency:
 
 jobs:
   wolfssl_watcomc_windows:
-    if: github.repository_owner == 'wolfssl'
+    #if: github.repository_owner == 'wolfssl'
     strategy:
       fail-fast: false
       matrix:
         common:
           - cmake:    '-G "Watcom WMake" -DCMAKE_VERBOSE_MAKEFILE=TRUE -DWOLFSSL_ASM=no -DWOLFSSL_EXAMPLES=no -DWOLFSSL_CRYPT_TESTS=no'
+        owimage:
+          - name:    '1.9'
+            ver:      '1.9'
+            id:       '19'
+          - name:    '2.0'
+            ver:      '2.0'
+            id:       '20'
         platform:
-          - title:   'Windows OW 2.0'
-            system:   'Windows'
+          - name:    'Windows OW'
+            system:   'windows'
             image:    'windows-latest'
-            owimage:  '2.0'
-            id:       'win32ow20'
+            id:       'win32ow'
             cmake:    '-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_SYSTEM_PROCESSOR=x86'
-          - title:   'Linux OW 2.0'
-            system:   'Linux'
+          - name:    'Linux OW'
+            system:   'linux'
             image:    'ubuntu-latest'
-            owimage:  '2.0'
-            id:       'linuxow20'
+            id:       'linuxow'
             cmake:    '-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=x86'
-          - title:   'OS/2 OW 2.0'
-            system:   'OS2'
+          - name:    'OS/2 OW'
+            system:   'os2'
             image:    'windows-latest'
-            owimage:  '2.0'
-            id:       'os2ow20'
+            id:       'os2ow'
             cmake:    '-DCMAKE_SYSTEM_NAME=OS2 -DCMAKE_SYSTEM_PROCESSOR=x86'
         thread:
-          - id:       'multi'
+          - name:    'MT'
+            id:       'mt'
             cmake:    ''
             owcmake:  '-DCMAKE_POLICY_DEFAULT_CMP0136=NEW -DCMAKE_WATCOM_RUNTIME_LIBRARY=MultiThreaded'
-          - id:       'single'
+          - name:    'ST'
+            id:       'st'
             cmake:    '-DWOLFSSL_SINGLE_THREADED=yes'
             owcmake:  '-DCMAKE_POLICY_DEFAULT_CMP0136=NEW -DCMAKE_WATCOM_RUNTIME_LIBRARY=SingleThreaded'
         library:
-          - id:       'dll'
+          - name:    'DLL'
+            id:       'dll'
             cmake:    ''
             owcmake:  'DLL'
-          - id:       'static'
+          - name:    ''
+            id:       'static'
             cmake:    '-DBUILD_SHARED_LIBS=no'
             owcmake:  ''
+        openssl:
+          - name:    ''
+            id:       ''
+            cmake:    ''
+          - name:    'OpenSSL'
+            id:       'ossl'
+            cmake:    '-DWOLFSSL_OPENSSLALL=yes'
         exclude:
-          - { platform: { system: 'Linux' }, library: { id: 'dll' } }
-    runs-on: ${{ matrix.platform.image }}
-    name: ${{ matrix.platform.title }} (${{ matrix.thread.id }} ${{ matrix.library.id }})
+          - { platform: { system: 'linux' }, library: { id: 'dll' } }
+          - { platform: { system: 'linux' }, owimage: { ver: '1.9' }, thread: { id: 'mt' } }
+    runs-on: ${{matrix.platform.image}}
+    name: ${{matrix.platform.name}} ${{matrix.owimage.name}} (${{matrix.thread.name}} ${{matrix.library.name}} ${{matrix.openssl.name}})
     steps:
-      - name: Setup Open Watcom ${{ matrix.platform.owimage }}
+      - name: Setup Open Watcom ${{matrix.owimage.ver}}
         uses: open-watcom/setup-watcom@v0
         with:
-          version: ${{ matrix.platform.owimage }}
+          version: ${{matrix.owimage.ver}}
 
       - name: Checkout wolfSSL
         uses: actions/checkout@v4
@@ -72,13 +89,13 @@ jobs:
         working-directory: wolfssl
         shell: bash
         run: |
-          cmake -B build ${{matrix.common.cmake}} ${{ matrix.platform.cmake }} ${{ matrix.thread.cmake }} ${{ matrix.library.cmake }} ${{ matrix.thread.owcmake }}${{ matrix.library.owcmake }}
+          cmake -B build ${{matrix.common.cmake}} ${{matrix.platform.cmake}} ${{matrix.thread.cmake}} ${{matrix.library.cmake}} ${{matrix.openssl.cmake}} ${{matrix.thread.owcmake}}${{matrix.library.owcmake}}
           cmake --build build
 
       - name: Upload build errors
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.platform.id }}-${{ matrix.thread.id }}-${{ matrix.library.id }}
+          name: ${{matrix.platform.id}}-${{matrix.owimage.id}}-${{matrix.thread.id}}-${{matrix.library.id}}-${{matrix.openssl.id}}
           path: |
             build/**
