@@ -287,10 +287,12 @@ typedef byte   ecc_oid_t;
 #endif
 
 
-#if !defined(WOLFSSL_ECC_CURVE_STATIC) && defined(USE_WINDOWS_API)
-    /* MSC does something different with the pointers to the arrays than GCC,
-     * and it causes the FIPS checksum to fail. In the case of windows builds,
-     * store everything as arrays instead of pointers to strings. */
+#if !defined(WOLFSSL_ECC_CURVE_STATIC) && defined(USE_WINDOWS_API) && \
+    !defined(__WATCOMC__)
+    /* MSC does something different with the pointers to the arrays than GCC
+     * and Watcom, and it causes the FIPS checksum to fail. In the case of
+     * windows builds (MSC), store everything as arrays instead of pointers
+     * to strings. */
 
     #define WOLFSSL_ECC_CURVE_STATIC
 #endif

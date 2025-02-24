@@ -120,11 +120,22 @@
 #endif
 
 /* THREADING/MUTEX SECTION */
-#if defined(__WATCOMC__)
-    #if !defined(SINGLE_THREADED)
-        #if defined(USE_WINDOWS_API)
+#if defined(SINGLE_THREADED) && defined(NO_FILESYSTEM)
+    /* No system headers required for build. */
+#elif defined(__WATCOMC__)
+    #if defined(SINGLE_THREADED)
+        #if defined(__NT__)
             #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
             #include <windows.h>
+            #undef _WINSOCKAPI_
+        #elif defined(__OS2__)
+            #include <os2.h>
+        #endif
+    #else
+        #if defined(__NT__)
+            #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
+            #include <windows.h>
+            #undef _WINSOCKAPI_
             #include <process.h>
         #elif defined(__OS2__)
             #define INCL_DOSSEMAPHORES
@@ -139,16 +150,7 @@
                 #include <pthread.h>
             #endif
         #endif
-    #else
-        #if defined(USE_WINDOWS_API)
-            #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
-            #include <windows.h>
-        #elif defined(__OS2__)
-            #include <os2.h>
-        #endif
     #endif
-#elif defined(SINGLE_THREADED) && defined(NO_FILESYSTEM)
-    /* No system headers required for build. */
 #elif defined(USE_WINDOWS_API)
     #if defined(WOLFSSL_PTHREADS)
         #include <pthread.h>
@@ -164,10 +166,6 @@
             #include <windows.h>
             /* winsock2.h expects _WINSOCKAPI_ to be undef, and defines it. */
             #undef _WINSOCKAPI_
-            #ifndef WOLFSSL_USER_IO
-                #include <winsock2.h>
-                #include <ws2tcpip.h> /* required for InetPton */
-            #endif
         #endif /* WOLFSSL_SGX */
     #endif
     #if !defined(SINGLE_THREADED) && !defined(_WIN32_WCE)
@@ -328,6 +326,18 @@
             signed char mutexBuffer[portQUEUE_OVERHEAD_BYTES];
             xSemaphoreHandle mutex;
         } wolfSSL_Mutex;
+    #elif defined (__WATCOMC__)
+        #if defined(__NT__)
+            typedef CRITICAL_SECTION wolfSSL_Mutex;
+        #elif defined(__OS2__)
+            typedef LHANDLE wolfSSL_Mutex;
+        #elif defined(__UNIX__)
+            #ifdef WOLFSSL_USE_RWLOCK
+                typedef pthread_rwlock_t wolfSSL_RwLock;
+            #endif
+            typedef pthread_mutex_t wolfSSL_Mutex;
+            #define WOLFSSL_MUTEX_INITIALIZER(lockname) PTHREAD_MUTEX_INITIALIZER
+        #endif
     #elif defined(USE_WINDOWS_API) && !defined(WOLFSSL_PTHREADS)
         typedef CRITICAL_SECTION wolfSSL_Mutex;
     #elif defined(MAXQ10XX_MUTEX)
@@ -398,9 +408,6 @@
         /* typedef User_Mutex wolfSSL_Mutex; */
     #elif defined(WOLFSSL_LINUXKM)
         /* definitions are in linuxkm/linuxkm_wc_port.h */
-    #elif defined(__WATCOMC__)
-        /* OS/2 */
-        typedef ULONG wolfSSL_Mutex;
     #else
         #error Need a mutex type in multithreaded mode
     #endif /* USE_WINDOWS_API */
@@ -925,7 +932,25 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
 
     #if !defined(NO_WOLFSSL_DIR)\
         && !defined(WOLFSSL_NUCLEUS) && !defined(WOLFSSL_NUCLEUS_1_2)
-        #if defined(USE_WINDOWS_API)
+        #if defined(__WATCOMC__)
+            #include <unistd.h>
+            #include <sys/stat.h>
+            #define XWRITE      write
+            #define XREAD       read
+            #define XCLOSE      close
+            #define XSTAT       stat
+            #define XS_ISREG(s) S_ISREG(s)
+            #if defined(__UNIX__)
+                #include <dirent.h>
+                #define SEPARATOR_CHAR ':'
+            #else
+                #include <direct.h>
+                #define SEPARATOR_CHAR ';'
+            #endif
+            #if defined(__NT__)
+                #define XALTHOMEVARNAME "USERPROFILE"
+            #endif
+        #elif defined(USE_WINDOWS_API)
             #include <io.h>
             #include <sys/stat.h>
             #ifndef XSTAT
@@ -963,9 +988,7 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
             #define SEPARATOR_CHAR ':'
 
         #else
-            #ifndef NO_WOLFSSL_DIR
-                #include <dirent.h>
-            #endif
+            #include <dirent.h>
             #include <unistd.h>
             #include <sys/stat.h>
             #define XWRITE      write
@@ -1065,29 +1088,12 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
     #define XSPRINTF   sprintf
 #endif
 
-#ifdef USE_WINDOWS_API
-    #ifndef SOCKET_T
-        #ifdef __MINGW64__
-            typedef size_t SOCKET_T;
-        #else
-            typedef unsigned int SOCKET_T;
-        #endif
-    #endif
-    #ifndef SOCKET_INVALID
-        #define SOCKET_INVALID INVALID_SOCKET
-    #endif
-#else
-    #ifndef SOCKET_T
-        typedef int SOCKET_T;
-    #endif
-    #ifndef SOCKET_INVALID
-        #define SOCKET_INVALID (-1)
-    #endif
-#endif
-
 /* MIN/MAX MACRO SECTION */
+#if defined(__WATCOMC__)
+    #define WOLFSSL_HAVE_MIN
+    #define WOLFSSL_HAVE_MAX
 /* Windows API defines its own min() macro. */
-#if defined(USE_WINDOWS_API)
+#elif defined(USE_WINDOWS_API)
     #if defined(min) || defined(WOLFSSL_MYSQL_COMPATIBLE)
         #undef  WOLFSSL_HAVE_MIN
         #define WOLFSSL_HAVE_MIN
@@ -1218,6 +1224,7 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
 #elif defined(_WIN32_WCE)
     #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
     #include <windows.h>
+    #undef _WINSOCKAPI_
     #include <stdlib.h> /* For file system */
 
     time_t windows_time(time_t* timer);
