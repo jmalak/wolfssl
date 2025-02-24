@@ -854,24 +854,11 @@ WOLFSSL_API void wolfSSL_SetIOWriteFlags(WOLFSSL* ssl, int flags);
 #endif /* WOLFSSL_SESSION_EXPORT */
 
 
-
 #ifndef XINET_NTOP
     #define XINET_NTOP(a,b,c,d) inet_ntop((a),(b),(c),(d))
-    #ifdef USE_WINDOWS_API /* Windows-friendly definition */
-        #undef  XINET_NTOP
-        #define XINET_NTOP(a,b,c,d) InetNtop((a),(b),(c),(d))
-    #endif
 #endif
 #ifndef XINET_PTON
     #define XINET_PTON(a,b,c)   inet_pton((a),(b),(c))
-    #ifdef USE_WINDOWS_API /* Windows-friendly definition */
-        #undef  XINET_PTON
-        #if defined(__MINGW64__) && !defined(UNICODE)
-            #define XINET_PTON(a,b,c)   InetPton((a),(b),(c))
-        #else
-            #define XINET_PTON(a,b,c)   InetPton((a),(PCWSTR)(b),(c))
-        #endif
-    #endif
 #endif
 
 #ifndef XHTONS
