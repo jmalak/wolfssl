@@ -212,7 +212,7 @@ endif()
 
 if(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -wx -wcd=202")
-    list(APPEND WOLFSSL_DEFINITIONS "-DWOLFSSL_HAVE_MIN -DWOLFSSL_HAVE_MAX -DNO_WRITEV")
+    list(APPEND WOLFSSL_DEFINITIONS "-DNO_WRITEV")
 elseif(WIN32)
     # Windows cl.exe does not support the -Wextra, -Wno-unused and -Werror flags.
     set(CMAKE_C_FLAGS "-Wall ${CMAKE_C_FLAGS}")
@@ -2429,7 +2429,8 @@ target_link_libraries(wolfssl PUBLIC ${WOLFSSL_LINK_LIBS})
 
 if(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
     if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-        target_link_libraries(wolfssl PUBLIC ws2_32 crypt32)
+        target_link_libraries(wolfssl PUBLIC
+            ws2_32 crypt32)
     endif()
 elseif (WIN32 OR ${CMAKE_SYSTEM_NAME} MATCHES "^MSYS" OR ${CMAKE_SYSTEM_NAME} MATCHES "^MINGW")
     # For Windows link required libraries

@@ -58,30 +58,38 @@
 #endif
 
 #if defined(__WATCOMC__)
-    #if defined(__NT__)
-    #elif defined(__OS2__)
-        #include <errno.h>
-        #include <os2.h>
-        #include <sys/types.h>
-        #include <os2/types.h>
-        #include <sys/socket.h>
-        #include <arpa/inet.h>
-        #include <netinet/in.h>
-        #include <nerrno.h>
-        #include <sys/ioctl.h>
-
-        typedef int socklen_t;
-    #elif defined(__LINUX__)
-        #include <sys/types.h>
-        #include <errno.h>
-        #include <unistd.h>
-        #include <fcntl.h>
-        #define XFCNTL(fd, flag, block) fcntl((fd), (flag), (block))
+    #if defined(WOLFSSL_NO_SOCK)
+    #elif defined(__NT__)
+        #ifdef WINSOCK1
+            #define WOLFSSL_IP6 AF_UNSPEC
+            #include <winsock.h>
+        #else
+            #include <winsock2.h>
+            #include <ws2tcpip.h> /* required for InetPton */
+        #endif
+    #else
+        #if defined(__OS2__)
+            #include <os2.h>
+            #include <sys/types.h>
+            #include <os2/types.h>
+            #include <errno.h>
+            #include <nerrno.h>
+            #include <tcpustd.h>
+            #define XSOCKLEN_TYPE   int
+        #elif defined(__UNIX__)
+            #include <errno.h>
+            #include <sys/types.h>
+            #include <unistd.h>
+            #include <fcntl.h>
+            #define XFCNTL(fd, flag, block) fcntl((fd), (flag), (block))
+        #endif
         #include <sys/socket.h>
         #include <arpa/inet.h>
         #include <netinet/in.h>
     #endif
 #elif defined(USE_WINDOWS_API)
+    #include <winsock2.h>
+    #include <ws2tcpip.h> /* required for InetPton */
 #else
     #if defined(WOLFSSL_LWIP) && !defined(WOLFSSL_APACHE_MYNEWT)
         /* lwIP needs to be configured to use sockets API in this mode */
@@ -96,11 +104,13 @@
     #elif defined(FREESCALE_MQX)
         #include <posix.h>
         #include <rtcs.h>
+        #define XSOCKLEN_TYPE   int
     #elif defined(FREESCALE_KSDK_MQX)
         #include <rtcs.h>
     #elif (defined(WOLFSSL_MDK_ARM) || defined(WOLFSSL_KEIL_TCP_NET))
         #include "rl_net.h"
         #include "errno.h"
+        #define XSOCKLEN_TYPE   int
     #elif defined(WOLFSSL_CMSIS_RTOS)
         #include "cmsis_os.h"
     #elif defined(WOLFSSL_CMSIS_RTOSv2)
@@ -177,6 +187,7 @@
         #include <fclfcntl.h>
     #elif defined(WOLFSSL_EMNET)
         #include <IP/IP.h>
+        #define XSOCKLEN_TYPE   int
     #elif !defined(WOLFSSL_NO_SOCK)
         #include <sys/types.h>
         #include <errno.h>
@@ -196,6 +207,7 @@
         #elif defined(NUCLEUS_PLUS_2_3)
             #define SO_TYPE     17  /* Socket type */
             #define SO_RCVTIMEO 13  /* Recv Timeout */
+            #define XSOCKLEN_TYPE   int
         #elif !defined(DEVKITPRO) && !defined(WOLFSSL_PICOTCP) \
                 && !defined(WOLFSSL_CONTIKI) && !defined(WOLFSSL_WICED) \
                 && !defined(WOLFSSL_GNRC) && !defined(WOLFSSL_RIOT_OS)
@@ -385,7 +397,6 @@
     #define SOCKET_ECONNREFUSED ERR_CONN
     #define SOCKET_ECONNABORTED ERR_ABRT
 #elif defined(WOLFSSL_EMNET)
-    #define XSOCKLENT           int
     #define SOCKET_EWOULDBLOCK  IP_ERR_WOULD_BLOCK
     #define SOCKET_EAGAIN       IP_ERR_WOULD_BLOCK
     #define SOCKET_ECONNRESET   IP_ERR_CONN_RESET
@@ -464,11 +475,10 @@
 
 #ifndef WOLFSSL_NO_SOCK
     #ifndef XSOCKLENT
-        #ifdef USE_WINDOWS_API
+        #ifdef XSOCKLEN_TYPE
+            #define XSOCKLENT XSOCKLEN_TYPE
+        #elif defined(USE_WINDOWS_API)
             #define XSOCKLENT int
-        #elif defined(NUCLEUS_PLUS_2_3)
-            typedef int socklen_t;
-            #define XSOCKLENT socklen_t
         #else
             #define XSOCKLENT socklen_t
         #endif
@@ -483,26 +493,74 @@
 
     /* Socket Addr Support */
     #ifdef HAVE_SOCKADDR
-    #ifndef HAVE_SOCKADDR_DEFINED
-        typedef struct sockaddr         SOCKADDR;
-    #endif
-        typedef struct sockaddr_storage SOCKADDR_S;
-        typedef struct sockaddr_in      SOCKADDR_IN;
-        #ifdef WOLFSSL_IPV6
-            typedef struct sockaddr_in6 SOCKADDR_IN6;
+        #ifdef USE_WINDOWS_API
+            typedef struct sockaddr_storage SOCKADDR_S;
+            /* getaddrinfo support */
+            #if NTDDI_VERSION >= NTDDI_VISTA
+                #define HAVE_GETADDRINFO
+            #endif
+        #else
+            #ifndef HAVE_SOCKADDR_DEFINED
+                typedef struct sockaddr     SOCKADDR;
+            #endif
+            typedef struct sockaddr_storage SOCKADDR_S;
+            typedef struct sockaddr_in      SOCKADDR_IN;
+            #ifdef WOLFSSL_IPV6
+                typedef struct sockaddr_in6 SOCKADDR_IN6;
+            #endif
+            #if defined(HAVE_SYS_UN_H) && !defined(WOLFSSL_NO_SOCKADDR_UN)
+                #include <sys/un.h>
+                typedef struct sockaddr_un  SOCKADDR_UN;
+            #endif
+            typedef struct hostent          HOSTENT;
+            /* getaddrinfo support */
+            #if defined(HAVE_GETADDRINFO)
+                typedef struct addrinfo     ADDRINFO;
+            #endif
         #endif
-        #if defined(HAVE_SYS_UN_H) && !defined(WOLFSSL_NO_SOCKADDR_UN)
-            #include <sys/un.h>
-            typedef struct sockaddr_un SOCKADDR_UN;
-        #endif
-        typedef struct hostent          HOSTENT;
     #endif /* HAVE_SOCKADDR */
 
-    #if defined(HAVE_GETADDRINFO)
-        typedef struct addrinfo         ADDRINFO;
-    #endif
 #endif /* WOLFSSL_NO_SOCK */
 
+/* Socket data definition */
+#ifdef USE_WINDOWS_API
+    #ifndef SOCKET_T
+        #define SOCKET_T SOCKET
+    #endif
+    #ifndef SOCKET_INVALID
+        #define SOCKET_INVALID INVALID_SOCKET
+    #endif
+    #ifndef SOCKET_IS_VALID
+        #define SOCKET_IS_VALID(s) \
+                ((SOCKET_T)(s) != SOCKET_INVALID)
+    #endif
+#else
+    #ifndef SOCKET_T
+        typedef int SOCKET_T;
+    #endif
+    #ifndef SOCKET_INVALID
+        #define SOCKET_INVALID (-1)
+    #endif
+    #ifndef SOCKET_IS_VALID
+        #define SOCKET_IS_VALID(s) \
+                ((SOCKET_T)(s) > SOCKET_INVALID)
+    #endif
+#endif
+
+/* Socket Handling */
+#ifndef WOLFSSL_SOCKET_INVALID
+    #define WOLFSSL_SOCKET_INVALID  ((SOCKET_T)SOCKET_INVALID)
+#endif /* WOLFSSL_SOCKET_INVALID */
+
+#ifndef WOLFSSL_SOCKET_IS_INVALID
+    #if defined(USE_WINDOWS_API) || defined(WOLFSSL_TIRTOS)
+        #define WOLFSSL_SOCKET_IS_INVALID(s) \
+                ((SOCKET_T)(s) == WOLFSSL_SOCKET_INVALID)
+    #else
+        #define WOLFSSL_SOCKET_IS_INVALID(s) \
+                ((SOCKET_T)(s) < WOLFSSL_SOCKET_INVALID)
+    #endif
+#endif /* WOLFSSL_SOCKET_IS_INVALID */
 
 /* IO API's */
 #ifdef HAVE_IO_TIMEOUT
