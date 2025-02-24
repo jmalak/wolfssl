@@ -892,7 +892,6 @@ WOLFSSL_API void wolfSSL_SetIOWriteFlags(WOLFSSL* ssl, int flags);
 #endif /* WOLFSSL_SESSION_EXPORT */
 
 
-
 #ifndef XINET_NTOP
     #if defined(__WATCOMC__)
         #if defined(__OS2__) || defined(__NT__) && \
