@@ -2428,8 +2428,9 @@ target_include_directories(wolfssl
 target_link_libraries(wolfssl PUBLIC ${WOLFSSL_LINK_LIBS})
 
 if(CMAKE_C_COMPILER_ID STREQUAL "OpenWatcom")
-    if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-        target_link_libraries(wolfssl PUBLIC ws2_32 crypt32)
+    if(WIN32)
+        target_link_libraries(wolfssl PUBLIC
+            ws2_32 crypt32)
     endif()
 elseif (WIN32 OR ${CMAKE_SYSTEM_NAME} MATCHES "^MSYS" OR ${CMAKE_SYSTEM_NAME} MATCHES "^MINGW")
     # For Windows link required libraries
