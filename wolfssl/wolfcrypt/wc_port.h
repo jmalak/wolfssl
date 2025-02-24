@@ -128,10 +128,6 @@
             #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
             #include <windows.h>
             #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header */
-            #ifndef WOLFSSL_USER_IO
-                #include <winsock2.h>
-                #include <ws2tcpip.h> /* required for InetPton */
-            #endif
         #elif defined(__OS2__)
             #include <os2.h>
         #endif
@@ -141,10 +137,6 @@
             #include <windows.h>
             #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header */
             #include <process.h>
-            #ifndef WOLFSSL_USER_IO
-                #include <winsock2.h>
-                #include <ws2tcpip.h> /* required for InetPton */
-            #endif
         #elif defined(__OS2__)
             #define INCL_DOSSEMAPHORES
             #define INCL_DOSPROCESS
@@ -172,11 +164,7 @@
         #if !defined(WOLFSSL_SGX) && !defined(WOLFSSL_NOT_WINDOWS_API)
             #define _WINSOCKAPI_ /* block inclusion of winsock.h header file. */
             #include <windows.h>
-            #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header */
-            #ifndef WOLFSSL_USER_IO
-                #include <winsock2.h>
-                #include <ws2tcpip.h> /* required for InetPton */
-            #endif
+            #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header file */
         #endif /* WOLFSSL_SGX */
     #endif
     #if !defined(SINGLE_THREADED) && !defined(_WIN32_WCE)
@@ -1089,26 +1077,6 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
 #endif
 #ifndef XSPRINTF
     #define XSPRINTF   sprintf
-#endif
-
-#ifdef USE_WINDOWS_API
-    #ifndef SOCKET_T
-        #ifdef __MINGW64__
-            typedef size_t SOCKET_T;
-        #else
-            typedef unsigned int SOCKET_T;
-        #endif
-    #endif
-    #ifndef SOCKET_INVALID
-        #define SOCKET_INVALID INVALID_SOCKET
-    #endif
-#else
-    #ifndef SOCKET_T
-        typedef int SOCKET_T;
-    #endif
-    #ifndef SOCKET_INVALID
-        #define SOCKET_INVALID (-1)
-    #endif
 #endif
 
 /* MIN/MAX MACRO SECTION */
