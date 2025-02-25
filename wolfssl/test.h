@@ -86,21 +86,10 @@
 #endif /*HAVE_PK_CALLBACKS */
 
 #ifdef __WATCOMC__
-    #define SNPRINTF snprintf
-    #if defined(__NT__)
-        #include <winsock2.h>
-        #include <ws2tcpip.h>
-        #include <process.h>
-        #ifdef TEST_IPV6            /* don't require newer SDK for IPV4 */
-            #include <wspiapi.h>
-        #endif
-        #define SOCKET_T SOCKET
-        #define XSLEEP_MS(t) Sleep(t)
+    #ifdef __NT__
     #elif defined(__OS2__)
         #include <netdb.h>
         #include <sys/ioctl.h>
-        #include <tcpustd.h>
-        #define SOCKET_T int
     #elif defined(__UNIX__)
         #include <string.h>
         #include <netdb.h>
@@ -108,15 +97,17 @@
         #ifndef WOLFSSL_NDS
             #include <sys/ioctl.h>
         #endif
-        #include <time.h>
-        #include <sys/time.h>
+//        #include <sys/time.h>
         #ifdef HAVE_PTHREAD
             #include <pthread.h>
         #endif
+        #include <fcntl.h>
         #define SOCKET_T int
         #ifndef SO_NOSIGPIPE
             #include <signal.h>  /* ignore SIGPIPE */
         #endif
+        #include <time.h>
+        #define SNPRINTF snprintf
 
         #define XSLEEP_MS(m) \
             { \
@@ -125,8 +116,6 @@
             }
     #endif
 #elif defined(USE_WINDOWS_API)
-    #include <winsock2.h>
-    #include <ws2tcpip.h>
     #include <process.h>
     #ifdef TEST_IPV6            /* don't require newer SDK for IPV4 */
         #include <wspiapi.h>

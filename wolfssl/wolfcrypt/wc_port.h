@@ -124,27 +124,19 @@
     /* No system headers required for build. */
 #elif defined(__WATCOMC__)
     #if defined(SINGLE_THREADED)
-        #if defined(USE_WINDOWS_API)
+        #if defined(__NT__)
             #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
             #include <windows.h>
-            #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header */
-            #ifndef WOLFSSL_USER_IO
-                #include <winsock2.h>
-                #include <ws2tcpip.h> /* required for InetPton */
-            #endif
+            #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header file */
         #elif defined(__OS2__)
             #include <os2.h>
         #endif
     #else
-        #if defined(USE_WINDOWS_API)
+        #if defined(__NT__)
             #define _WINSOCKAPI_ /* block inclusion of winsock.h header file */
             #include <windows.h>
-            #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header */
+            #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header file */
             #include <process.h>
-            #ifndef WOLFSSL_USER_IO
-                #include <winsock2.h>
-                #include <ws2tcpip.h> /* required for InetPton */
-            #endif
         #elif defined(__OS2__)
             #define INCL_DOSSEMAPHORES
             #define INCL_DOSPROCESS
@@ -172,11 +164,7 @@
         #if !defined(WOLFSSL_SGX) && !defined(WOLFSSL_NOT_WINDOWS_API)
             #define _WINSOCKAPI_ /* block inclusion of winsock.h header file. */
             #include <windows.h>
-            #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header */
-            #ifndef WOLFSSL_USER_IO
-                #include <winsock2.h>
-                #include <ws2tcpip.h> /* required for InetPton */
-            #endif
+            #undef _WINSOCKAPI_ /* undefine it for MINGW winsock2.h header file */
         #endif /* WOLFSSL_SGX */
     #endif
     #if !defined(SINGLE_THREADED) && !defined(_WIN32_WCE)
@@ -337,6 +325,18 @@
             signed char mutexBuffer[portQUEUE_OVERHEAD_BYTES];
             xSemaphoreHandle mutex;
         } wolfSSL_Mutex;
+    #elif defined(__WATCOMC__)
+        #if defined(__NT__)
+            typedef CRITICAL_SECTION wolfSSL_Mutex;
+        #elif defined(__OS2__)
+            typedef ULONG wolfSSL_Mutex;
+        #elif defined(__UNIX__)
+            #ifdef WOLFSSL_USE_RWLOCK
+                typedef pthread_rwlock_t wolfSSL_RwLock;
+            #endif
+            typedef pthread_mutex_t wolfSSL_Mutex;
+            #define WOLFSSL_MUTEX_INITIALIZER(lockname) PTHREAD_MUTEX_INITIALIZER
+        #endif
     #elif defined(USE_WINDOWS_API) && !defined(WOLFSSL_PTHREADS)
         typedef CRITICAL_SECTION wolfSSL_Mutex;
     #elif defined(MAXQ10XX_MUTEX)
@@ -407,9 +407,6 @@
         /* typedef User_Mutex wolfSSL_Mutex; */
     #elif defined(WOLFSSL_LINUXKM)
         /* definitions are in linuxkm/linuxkm_wc_port.h */
-    #elif defined(__WATCOMC__)
-        /* OS/2 */
-        typedef ULONG wolfSSL_Mutex;
     #else
         #error Need a mutex type in multithreaded mode
     #endif /* USE_WINDOWS_API */
@@ -1112,8 +1109,11 @@ WOLFSSL_ABI WOLFSSL_API int wolfCrypt_Cleanup(void);
 #endif
 
 /* MIN/MAX MACRO SECTION */
+#if defined(__WATCOMC__)
+    #define WOLFSSL_HAVE_MIN
+    #define WOLFSSL_HAVE_MAX
 /* Windows API defines its own min() macro. */
-#if defined(USE_WINDOWS_API)
+#elif defined(USE_WINDOWS_API)
     #if defined(min) || defined(WOLFSSL_MYSQL_COMPATIBLE)
         #undef  WOLFSSL_HAVE_MIN
         #define WOLFSSL_HAVE_MIN

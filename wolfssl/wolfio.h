@@ -57,31 +57,29 @@
     #include "zlib.h"
 #endif
 
-#if defined(__WATCOMC__)
+#ifdef __WATCOMC__
     #if defined(__NT__)
-    #elif defined(__OS2__)
+        #include <winsock2.h>
+        #include <ws2tcpip.h>
+    #else
         #include <errno.h>
-        #include <os2.h>
         #include <sys/types.h>
-        #include <os2/types.h>
-        #include <sys/socket.h>
-        #include <arpa/inet.h>
-        #include <netinet/in.h>
-        #include <nerrno.h>
-        #include <sys/ioctl.h>
-
-        typedef int socklen_t;
-    #elif defined(__LINUX__)
-        #include <sys/types.h>
-        #include <errno.h>
-        #include <unistd.h>
-        #include <fcntl.h>
-        #define XFCNTL(fd, flag, block) fcntl((fd), (flag), (block))
+        #if defined(__OS2__)
+            #include <os2.h>
+            #include <os2/types.h>
+            #include <nerrno.h>
+            #include <tcpustd.h>
+            typedef int socklen_t;
+        #elif defined(__LINUX__)
+            #include <unistd.h>
+        #endif
         #include <sys/socket.h>
         #include <arpa/inet.h>
         #include <netinet/in.h>
     #endif
 #elif defined(USE_WINDOWS_API)
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
 #else
     #if defined(WOLFSSL_LWIP) && !defined(WOLFSSL_APACHE_MYNEWT)
         /* lwIP needs to be configured to use sockets API in this mode */
@@ -502,6 +500,7 @@
         typedef struct addrinfo         ADDRINFO;
     #endif
 #endif /* WOLFSSL_NO_SOCK */
+
 
 
 /* IO API's */
