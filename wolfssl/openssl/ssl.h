@@ -1116,10 +1116,6 @@ wolfSSL_X509_STORE_set_verify_cb((WOLFSSL_X509_STORE *)(s), (WOLFSSL_X509_STORE_
 #define SSL_CTX_set_psk_server_callback wolfSSL_CTX_set_psk_server_callback
 #define SSL_set_psk_server_callback     wolfSSL_set_psk_server_callback
 
-#if !defined(USE_WINDOWS_API) && !defined(INVALID_SOCKET)
-    #define INVALID_SOCKET (-1)
-#endif
-
 /* system file ints for ERR_put_error */
 #define SYS_F_ACCEPT      WOLFSSL_SYS_ACCEPT
 #define SYS_F_BIND        WOLFSSL_SYS_BIND

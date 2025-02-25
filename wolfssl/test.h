@@ -86,19 +86,15 @@
 #endif /*HAVE_PK_CALLBACKS */
 
 #ifdef USE_WINDOWS_API
-    #include <winsock2.h>
     #include <process.h>
-    #ifdef TEST_IPV6            /* don't require newer SDK for IPV4 */
-        #include <ws2tcpip.h>
+    #ifdef TEST_IPV6
         #include <wspiapi.h>
     #endif
-    #define SOCKET_T SOCKET
     #define SNPRINTF _snprintf
     #define XSLEEP_MS(t) Sleep(t)
 #elif defined(WOLFSSL_MDK_ARM) || defined(WOLFSSL_KEIL_TCP_NET)
     #include <string.h>
     #include "rl_net.h"
-    #define SOCKET_T int
     typedef int socklen_t ;
     #define inet_addr wolfSSL_inet_addr
     static unsigned long wolfSSL_inet_addr(const char *cp)
@@ -129,7 +125,6 @@
         int h_length; /* length of address */
         char **h_addr_list; /* list of addresses from name server */
     };
-    #define SOCKET_T int
     #define XSLEEP_MS(t) Task_sleep(t/1000)
 #elif defined(WOLFSSL_VXWORKS)
     #include <hostLib.h>
@@ -147,7 +142,6 @@
     #endif
     #include <netdb.h>
     #include <pthread.h>
-    #define SOCKET_T int
 #elif defined(WOLFSSL_ZEPHYR)
     #include <version.h>
     #include <string.h>
@@ -169,7 +163,6 @@
             #include <posix/sys/select.h>
         #endif
     #endif
-    #define SOCKET_T int
     #define SOL_SOCKET 1
     #define WOLFSSL_USE_GETADDRINFO
 
@@ -225,7 +218,6 @@
     #ifdef FREESCALE_MQX
         typedef int socklen_t ;
     #endif
-    #define SOCKET_T int
     #ifndef SO_NOSIGPIPE
         #include <signal.h>  /* ignore SIGPIPE */
     #endif

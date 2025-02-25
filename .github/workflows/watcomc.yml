@@ -6,15 +6,16 @@ on:
     branches: [ 'master', 'main', 'release/**' ]
   pull_request:
     branches: [ '*' ]
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{github.workflow}}-${{github.ref}}
   cancel-in-progress: true
 # END OF COMMON SECTION
 
 jobs:
   wolfssl_watcomc_windows:
-    if: github.repository_owner == 'wolfssl'
+    #if: github.repository_owner == 'wolfssl'
     strategy:
       fail-fast: false
       matrix:
@@ -26,19 +27,25 @@ jobs:
             image:    'windows-latest'
             owimage:  '2.0'
             id:       'win32ow20'
-            cmake:    '-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_SYSTEM_PROCESSOR=x86'
+            cmake:    '-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_SYSTEM_PROCESSOR=x86 -DCMAKE_REQUIRED_LIBRARIES=ws2_32'
+            copts:    '-D_WIN32_WINNT=0x0600 -D_NTDDI_VERSION=0x06000000'
+            link:     'library ws2_32'
           - title:   'Linux OW 2.0'
             system:   'Linux'
             image:    'ubuntu-latest'
             owimage:  '2.0'
             id:       'linuxow20'
             cmake:    '-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=x86'
+            copts:    ''
+            link:     ''
           - title:   'OS/2 OW 2.0'
             system:   'OS2'
             image:    'windows-latest'
             owimage:  '2.0'
             id:       'os2ow20'
             cmake:    '-DCMAKE_SYSTEM_NAME=OS2 -DCMAKE_SYSTEM_PROCESSOR=x86'
+            copts:    ''
+            link:     ''
         thread:
           - id:       'multi'
             cmake:    ''
@@ -55,13 +62,13 @@ jobs:
             owcmake:  ''
         exclude:
           - { platform: { system: 'Linux' }, library: { id: 'dll' } }
-    runs-on: ${{ matrix.platform.image }}
-    name: ${{ matrix.platform.title }} (${{ matrix.thread.id }} ${{ matrix.library.id }})
+    runs-on: ${{matrix.platform.image}}
+    name: ${{matrix.platform.title}} (${{matrix.thread.id}} ${{matrix.library.id}})
     steps:
-      - name: Setup Open Watcom ${{ matrix.platform.owimage }}
+      - name: Setup Open Watcom ${{matrix.platform.owimage}}
         uses: open-watcom/setup-watcom@v0
         with:
-          version: ${{ matrix.platform.owimage }}
+          version: ${{matrix.platform.owimage}}
 
       - name: Checkout wolfSSL
         uses: actions/checkout@v4
@@ -72,13 +79,16 @@ jobs:
         working-directory: wolfssl
         shell: bash
         run: |
-          cmake -B build ${{matrix.common.cmake}} ${{ matrix.platform.cmake }} ${{ matrix.thread.cmake }} ${{ matrix.library.cmake }} ${{ matrix.thread.owcmake }}${{ matrix.library.owcmake }}
+          cmake -B build ${{matrix.common.cmake}} ${{matrix.platform.cmake}} ${{matrix.thread.cmake}} ${{matrix.library.cmake}} ${{matrix.thread.owcmake}}${{matrix.library.owcmake}}
           cmake --build build
+        env:
+          WCC386: ${{matrix.platform.copts}}
+          WLINK: ${{matrix.platform.link}}
 
       - name: Upload build errors
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.platform.id }}-${{ matrix.thread.id }}-${{ matrix.library.id }}
+          name: ${{matrix.platform.id}}-${{matrix.thread.id}}-${{matrix.library.id}}
           path: |
             build/**

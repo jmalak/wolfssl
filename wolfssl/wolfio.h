@@ -57,7 +57,35 @@
     #include "zlib.h"
 #endif
 
-#ifndef USE_WINDOWS_API
+#if defined(__WATCOMC__)
+    #if defined(__NT__)
+        #include <winsock2.h>
+        #include <ws2tcpip.h>
+        #define SOCKET_T    SOCKET
+    #elif defined(__OS2__)
+        #include <errno.h>
+        #include <os2.h>
+        #include <sys/types.h>
+        #include <os2/types.h>
+        #include <sys/socket.h>
+        #include <arpa/inet.h>
+        #include <netinet/in.h>
+        #include <nerrno.h>
+
+        typedef int socklen_t;
+    #elif defined(__LINUX__)
+        #include <sys/types.h>
+        #include <errno.h>
+        #include <unistd.h>
+        #include <sys/socket.h>
+        #include <arpa/inet.h>
+        #include <netinet/in.h>
+    #endif
+#elif defined(USE_WINDOWS_API)
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #define SOCKET_T    SOCKET
+#else
     #if defined(WOLFSSL_LWIP) && !defined(WOLFSSL_APACHE_MYNEWT)
         /* lwIP needs to be configured to use sockets API in this mode */
         /* LWIP_SOCKET 1 in lwip/opt.h or in build */
@@ -152,26 +180,7 @@
         #include <fclfcntl.h>
     #elif defined(WOLFSSL_EMNET)
         #include <IP/IP.h>
-    #elif defined(__WATCOMC__)
-        #if defined(__OS2__)
-            #include <errno.h>
-            #include <os2.h>
-            #include <sys/types.h>
-            #include <os2/types.h>
-            #include <sys/socket.h>
-            #include <arpa/inet.h>
-            #include <netinet/in.h>
-            #include <nerrno.h>
-
-            typedef int socklen_t;
-        #elif defined(__LINUX__)
-            #include <sys/types.h>
-            #include <errno.h>
-            #include <unistd.h>
-            #include <sys/socket.h>
-            #include <arpa/inet.h>
-            #include <netinet/in.h>
-        #endif
+        #define XSOCKLENT   int
     #elif !defined(WOLFSSL_NO_SOCK)
         #include <sys/types.h>
         #include <errno.h>
@@ -215,7 +224,7 @@
         #include <errno.h>
     #endif
 
-#endif /* USE_WINDOWS_API */
+#endif
 
 #ifdef __sun
     #include <sys/filio.h>
@@ -347,7 +356,6 @@
     #define SOCKET_ECONNREFUSED ERR_CONN
     #define SOCKET_ECONNABORTED ERR_ABRT
 #elif defined(WOLFSSL_EMNET)
-    #define XSOCKLENT           int
     #define SOCKET_EWOULDBLOCK  IP_ERR_WOULD_BLOCK
     #define SOCKET_EAGAIN       IP_ERR_WOULD_BLOCK
     #define SOCKET_ECONNRESET   IP_ERR_CONN_RESET
@@ -443,6 +451,13 @@
         #endif
     #endif
 
+#ifdef __WATCOMC__
+#ifdef HAVE_GETADDRINFO
+#error "HAVE_GETADDRINFO defined"
+#else
+#error "HAVE_GETADDRINFO undefined"
+#endif
+#endif
     /* Socket Addr Support */
     #ifdef HAVE_SOCKADDR
     #ifndef HAVE_SOCKADDR_DEFINED
@@ -465,6 +480,28 @@
     #endif
 #endif /* WOLFSSL_NO_SOCK */
 
+#ifdef USE_WINDOWS_API
+    #ifndef SOCKET_T
+        #if defined(__MINGW64__)
+            #define SOCKET_T    size_t
+        #else
+            #define SOCKET_T    unsigned int
+        #endif
+    #endif
+    #ifndef INVALID_SOCKET
+        #define INVALID_SOCKET  ((SOCKET_T)-1)
+    #endif
+    #ifndef SOCKET_INVALID
+        #define SOCKET_INVALID  INVALID_SOCKET
+    #endif
+#else
+    #ifndef SOCKET_T
+        #define SOCKET_T        int
+    #endif
+    #ifndef SOCKET_INVALID
+        #define SOCKET_INVALID  (-1)
+    #endif
+#endif
 
 /* IO API's */
 #ifdef HAVE_IO_TIMEOUT
