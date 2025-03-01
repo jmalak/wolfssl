@@ -210,9 +210,9 @@ static void err_sys_ex(int out, const char* msg)
 /* Translates return codes returned from
  * send() and recv() if need be.
  */
-static WC_INLINE int TranslateReturnCode(int old, int sd)
+static WC_INLINE int TranslateReturnCode(int old, SOCKET_T sfd)
 {
-    (void)sd;
+    (void)sfd;
 
 #if defined(FREESCALE_MQX) || defined(FREESCALE_KSDK_MQX)
     if (old == 0) {
@@ -221,7 +221,7 @@ static WC_INLINE int TranslateReturnCode(int old, int sd)
     }
 
     if (old < 0) {
-        errno = RTCS_geterror(sd);
+        errno = RTCS_geterror(sfd);
         if (errno == RTCSERR_TCP_CONN_CLOSING)
             return 0;   /* convert to BSD style closing */
         if (errno == RTCSERR_TCP_CONN_RLSD)
@@ -279,7 +279,7 @@ static WC_INLINE int PeekSeq(const char* buf, word32* seq)
 static int TestEmbedSendTo(WOLFSSL* ssl, char *buf, int sz, void *ctx)
 {
     WOLFSSL_TEST_DTLS_CTX* dtlsCtx = (WOLFSSL_TEST_DTLS_CTX*)ctx;
-    int sd = dtlsCtx->wfd;
+    SOCKET_T sfd = dtlsCtx->wfd;
     int sent;
 
     (void)ssl;
@@ -296,10 +296,10 @@ static int TestEmbedSendTo(WOLFSSL* ssl, char *buf, int sz, void *ctx)
         }
     }
 
-    sent = (int)sendto(sd, buf, (size_t)sz, 0,
+    sent = (int)sendto(sfd, buf, (size_t)sz, 0,
                         (const SOCKADDR*)&dtlsCtx->peer.sa, dtlsCtx->peer.sz);
 
-    sent = TranslateReturnCode(sent, sd);
+    sent = TranslateReturnCode(sent, sfd);
 
     if (sent < 0) {
         int err = wolfSSL_LastError();
@@ -339,7 +339,7 @@ static int NonBlockingSSL_Accept(SSL* ssl)
     int ret = wolfSSL_accept_ex(ssl, srvHandShakeCB, srvTimeoutCB, srvTo);
 #endif
     int error = SSL_get_error(ssl, 0);
-    SOCKET_T sockfd = (SOCKET_T)SSL_get_fd(ssl);
+    SOCKET_T sockfd = SSL_get_fd(ssl);
     int select_ret = 0;
 
     while (ret != WOLFSSL_SUCCESS &&
@@ -1552,8 +1552,8 @@ static int server_srtp_test(WOLFSSL *ssl, func_args *args)
 
 THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
 {
-    SOCKET_T sockfd   = WOLFSSL_SOCKET_INVALID;
-    SOCKET_T clientfd = WOLFSSL_SOCKET_INVALID;
+    SOCKET_T sockfd   = SOCKET_INVALID;
+    SOCKET_T clientfd = SOCKET_INVALID;
     SOCKADDR_IN_T client_addr;
     socklen_t client_len;
 
@@ -3126,7 +3126,7 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
                 tcp_listen(&sockfd, &port, useAnyAddr, dtlsUDP, dtlsSCTP);
                 clientfd = sockfd;
             }
-            if (WOLFSSL_SOCKET_IS_INVALID(clientfd)) {
+            if (SOCKET_IS_INVALID(clientfd)) {
                 err_sys_ex(runWithErrors, "tcp accept failed");
             }
         }
@@ -3485,7 +3485,7 @@ THREAD_RETURN WOLFSSL_THREAD server_test(void* args)
                                         client_len) != 0) {
                     err_sys_ex(catastrophic, "error in connecting to peer");
                 }
-                wolfSSL_SetIOWriteCtx(ssl, (void*)&sockfd);
+                wolfSSL_SetIOWriteCtx(ssl, IOCTX2CTX(sockfd));
 #endif
             }
         }

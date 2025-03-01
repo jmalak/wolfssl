@@ -64,8 +64,8 @@
     #error No authentication algorithm (ECC/RSA)
 #endif
 
-static int mSockfd = SOCKET_INVALID;
-static int mConnd = SOCKET_INVALID;
+static SOCKET_T mSockfd = SOCKET_INVALID;
+static SOCKET_T mConnd = SOCKET_INVALID;
 static int mShutdown = 0;
 
 #ifdef HAVE_SIGNAL
@@ -78,11 +78,11 @@ static void sig_handler(const int sig)
 #endif
 
     mShutdown = 1;
-    if (mConnd != SOCKET_INVALID) {
+    if (!SOCKET_IS_INVALID(mConnd)) {
         close(mConnd);           /* Close the connection to the client   */
         mConnd = SOCKET_INVALID;
     }
-    if (mSockfd != SOCKET_INVALID) {
+    if (!SOCKET_IS_INVALID(mSockfd)) {
         close(mSockfd);          /* Close the socket listening for clients   */
         mSockfd = SOCKET_INVALID;
     }
@@ -329,7 +329,7 @@ int server_async_test(int argc, char** argv)
             wolfSSL_free(ssl);    /* Free the wolfSSL object                */
             ssl = NULL;
         }
-        if (mConnd != SOCKET_INVALID) {
+        if (!SOCKET_IS_INVALID(mConnd)) {
             close(mConnd);        /* Close the connection to the client     */
             mConnd = SOCKET_INVALID;
         }
@@ -341,11 +341,11 @@ exit:
     /* Cleanup and return */
     if (ssl)
         wolfSSL_free(ssl);        /* Free the wolfSSL object                */
-    if (mConnd != SOCKET_INVALID) {
+    if (!SOCKET_IS_INVALID(mConnd)) {
         close(mConnd);            /* Close the connection to the client     */
         mConnd = SOCKET_INVALID;
     }
-    if (mSockfd != SOCKET_INVALID) {
+    if (!SOCKET_IS_INVALID(mSockfd)) {
         close(mSockfd);           /* Close the socket listening for clients */
         mSockfd = SOCKET_INVALID;
     }

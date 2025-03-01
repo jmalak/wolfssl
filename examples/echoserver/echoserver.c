@@ -329,10 +329,12 @@ THREAD_RETURN WOLFSSL_THREAD echoserver_test(void* args)
                 err_sys("recvfrom failed");
         }
 #endif
-        if (WOLFSSL_SOCKET_IS_INVALID(clientfd)) err_sys("tcp accept failed");
+        if (WOLFSSL_SOCKET_IS_INVALID(clientfd))
+            err_sys("tcp accept failed");
 
         ssl = wolfSSL_new(ctx);
-        if (ssl == NULL) err_sys("SSL_new failed");
+        if (ssl == NULL)
+            err_sys("SSL_new failed");
         wolfSSL_set_fd(ssl, clientfd);
         #ifdef WOLFSSL_DTLS
             wolfSSL_dtls_set_peer(ssl, &client, client_len);
@@ -351,7 +353,8 @@ THREAD_RETURN WOLFSSL_THREAD echoserver_test(void* args)
             #ifdef WOLFSSL_ASYNC_CRYPT
                 if (err == WC_NO_ERR_TRACE(WC_PENDING_E)) {
                     ret = wolfSSL_AsyncPoll(ssl, WOLF_POLL_FLAG_CHECK_HW);
-                    if (ret < 0) break;
+                    if (ret < 0)
+                        break;
                 }
             #endif
             }
@@ -391,7 +394,8 @@ THREAD_RETURN WOLFSSL_THREAD echoserver_test(void* args)
                 #ifdef WOLFSSL_ASYNC_CRYPT
                     if (err == WC_NO_ERR_TRACE(WC_PENDING_E)) {
                         ret = wolfSSL_AsyncPoll(ssl, WOLF_POLL_FLAG_CHECK_HW);
-                        if (ret < 0) break;
+                        if (ret < 0)
+                            break;
                     }
                 #endif
                 }
@@ -454,7 +458,8 @@ THREAD_RETURN WOLFSSL_THREAD echoserver_test(void* args)
                     #ifdef WOLFSSL_ASYNC_CRYPT
                         if (err == WC_NO_ERR_TRACE(WC_PENDING_E)) {
                             ret = wolfSSL_AsyncPoll(write_ssl, WOLF_POLL_FLAG_CHECK_HW);
-                            if (ret < 0) break;
+                            if (ret < 0)
+                                break;
                         }
                     #endif
                     }
@@ -480,7 +485,8 @@ THREAD_RETURN WOLFSSL_THREAD echoserver_test(void* args)
                 #ifdef WOLFSSL_ASYNC_CRYPT
                     if (err == WC_NO_ERR_TRACE(WC_PENDING_E)) {
                         ret = wolfSSL_AsyncPoll(write_ssl, WOLF_POLL_FLAG_CHECK_HW);
-                        if (ret < 0) break;
+                        if (ret < 0)
+                            break;
                     }
                 #endif
                 }

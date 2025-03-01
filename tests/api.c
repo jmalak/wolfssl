@@ -7738,8 +7738,8 @@ static int nonblocking_accept_read(void* args, WOLFSSL* ssl, SOCKET_T* sockfd)
 
 static THREAD_RETURN WOLFSSL_THREAD test_server_nofail(void* args)
 {
-    SOCKET_T sockfd = 0;
-    SOCKET_T clientfd = 0;
+    SOCKET_T sockfd = SOCKET_INVALID;
+    SOCKET_T clientfd = SOCKET_INVALID;
     word16 port;
 
     callback_functions* cbf;
@@ -8061,7 +8061,7 @@ done:
 static THREAD_RETURN WOLFSSL_THREAD test_server_loop(void* args)
 {
     SOCKET_T sockfd;
-    SOCKET_T clientfd = -1;
+    SOCKET_T clientfd = SOCKET_INVALID;
     word16 port;
 
     callback_functions* cbf;
@@ -8224,7 +8224,7 @@ static THREAD_RETURN WOLFSSL_THREAD test_server_loop(void* args)
         wolfSSL_shutdown(ssl);
         wolfSSL_free(ssl); ssl = NULL;
         CloseSocket(clientfd);
-        clientfd = -1;
+        clientfd = SOCKET_INVALID;
 
         count++;
     }
@@ -8242,7 +8242,7 @@ done:
     if (!sharedCtx)
         wolfSSL_CTX_free(ctx);
 
-    if (clientfd != SOCKET_INVALID)
+    if (!SOCKET_IS_INVALID(clientfd))
         CloseSocket(clientfd);
 
 #ifdef WOLFSSL_TIRTOS
@@ -8261,7 +8261,7 @@ done:
 static int test_client_nofail(void* args, cbType cb)
 {
 #if !defined(NO_WOLFSSL_CLIENT)
-    SOCKET_T sockfd = 0;
+    SOCKET_T sockfd = SOCKET_INVALID;
     callback_functions* cbf;
 
     WOLFSSL_CTX*     ctx     = 0;
@@ -8574,7 +8574,7 @@ void test_wolfSSL_client_server_nofail(callback_functions* client_cb,
 static void test_client_reuse_WOLFSSLobj(void* args, cbType cb,
                                          void* server_args)
 {
-    SOCKET_T sockfd = 0;
+    SOCKET_T sockfd = SOCKET_INVALID;
     callback_functions* cbf;
 
     WOLFSSL_CTX*     ctx     = 0;
@@ -8729,7 +8729,7 @@ static void test_client_reuse_WOLFSSLobj(void* args, cbType cb,
     session = NULL;
     /* close socket once */
     CloseSocket(sockfd);
-    sockfd = 0;
+    sockfd = SOCKET_INVALID;
     /* wait until server ready */
     wait_tcp_ready((func_args*)server_args);
     fprintf(stderr, "session resumption\n");
@@ -8818,8 +8818,8 @@ static THREAD_RETURN WOLFSSL_THREAD run_wolfssl_server(void* args)
 
     WOLFSSL_CTX*    ctx = NULL;
     WOLFSSL*        ssl = NULL;
-    SOCKET_T        sfd = 0;
-    SOCKET_T        cfd = 0;
+    SOCKET_T        sfd = SOCKET_INVALID;
+    SOCKET_T        cfd = SOCKET_INVALID;
     word16          port;
 
     char msg[] = "I hear you fa shizzle!";
@@ -9108,7 +9108,7 @@ static void run_wolfssl_client(void* args)
 
     WOLFSSL_CTX* ctx = NULL;
     WOLFSSL*     ssl = NULL;
-    SOCKET_T    sfd = 0;
+    SOCKET_T     sfd = SOCKET_INVALID;
 
     char msg[] = "hello wolfssl server!";
     int  len   = (int) XSTRLEN(msg);
@@ -10716,7 +10716,7 @@ static int test_wolfSSL_dtls_export(void)
 #endif
 
     if (EXPECT_SUCCESS()) {
-        SOCKET_T sockfd = 0;
+        SOCKET_T sockfd = SOCKET_INVALID;
         WOLFSSL_CTX* ctx = NULL;
         WOLFSSL*     ssl = NULL;
         char msg[64] = "hello wolfssl!";
@@ -11020,8 +11020,8 @@ static const byte canned_server_session[] = {
 
 static THREAD_RETURN WOLFSSL_THREAD tls_export_server(void* args)
 {
-    SOCKET_T sockfd = 0;
-    SOCKET_T clientfd = 0;
+    SOCKET_T sockfd = SOCKET_INVALID;
+    SOCKET_T clientfd = SOCKET_INVALID;
     word16 port;
 
     callback_functions* cbf;
@@ -11137,7 +11137,7 @@ done:
 
 static void load_tls12_canned_server(WOLFSSL* ssl)
 {
-    int clientfd = wolfSSL_get_fd(ssl);
+    SOCKET_T clientfd = wolfSSL_get_fd(ssl);
     AssertIntEQ(wolfSSL_tls_import(ssl, canned_server_session,
                 sizeof(canned_server_session)), sizeof(canned_server_session));
     wolfSSL_set_fd(ssl, clientfd);
@@ -11147,7 +11147,7 @@ static void load_tls12_canned_server(WOLFSSL* ssl)
 #ifdef WOLFSSL_TLS13
 static void load_tls13_canned_server(WOLFSSL* ssl)
 {
-    int clientfd = wolfSSL_get_fd(ssl);
+    SOCKET_T clientfd = wolfSSL_get_fd(ssl);
     AssertIntEQ(wolfSSL_tls_import(ssl, canned_server_tls13_session,
             sizeof(canned_server_tls13_session)),
             sizeof(canned_server_tls13_session));
@@ -11160,7 +11160,7 @@ static void load_tls13_canned_server(WOLFSSL* ssl)
 static int test_wolfSSL_tls_export_run(int v)
 {
     EXPECT_DECLS;
-    SOCKET_T sockfd = 0;
+    SOCKET_T sockfd = SOCKET_INVALID;
     WOLFSSL_CTX*     ctx     = 0;
     WOLFSSL*         ssl     = 0;
     char msg[64] = "hello wolfssl!";
@@ -49710,7 +49710,7 @@ static int test_wolfSSL_CTX_set_client_CA_list(void)
         THREAD_TYPE serverThread;
         WOLFSSL* ssl_client = NULL;
         WOLFSSL_CTX* ctx_client = NULL;
-        SOCKET_T sockfd = 0;
+        SOCKET_T sockfd = SOCKET_INVALID;
 
         /* wolfSSL_get_client_CA_list() with handshake */
 
@@ -49814,8 +49814,8 @@ static THREAD_RETURN WOLFSSL_THREAD server_task_ech(void* args)
     callback_functions* callbacks = ((func_args*)args)->callbacks;
     WOLFSSL_CTX* ctx       = callbacks->ctx;
     WOLFSSL*  ssl   = NULL;
-    SOCKET_T  sfd   = 0;
-    SOCKET_T  cfd   = 0;
+    SOCKET_T  sfd   = SOCKET_INVALID;
+    SOCKET_T  cfd   = SOCKET_INVALID;
     word16    port;
     char      input[1024];
     int       idx;
@@ -50149,7 +50149,7 @@ static int test_wolfSSL_Tls13_ECH(void)
     THREAD_TYPE serverThread;
     callback_functions server_cbf;
     callback_functions client_cbf;
-    SOCKET_T sockfd = 0;
+    SOCKET_T sockfd = SOCKET_INVALID;
     WOLFSSL_CTX* ctx = NULL;
     WOLFSSL*     ssl = NULL;
     const char* publicName = "ech-public-name.com";
@@ -58921,7 +58921,7 @@ static int test_wolfSSL_BIO_should_retry(void)
     tcp_ready ready;
     func_args server_args;
     THREAD_TYPE serverThread;
-    SOCKET_T sockfd = 0;
+    SOCKET_T sockfd = SOCKET_INVALID;
     WOLFSSL_CTX* ctx = NULL;
     WOLFSSL*     ssl = NULL;
     char msg[64] = "hello wolfssl!";
@@ -59178,7 +59178,8 @@ static int test_wolfSSL_BIO_datagram(void)
     EXPECT_DECLS;
 #if !defined(NO_BIO) && defined(WOLFSSL_DTLS) && defined(WOLFSSL_HAVE_BIO_ADDR) && defined(OPENSSL_EXTRA)
     int ret;
-    SOCKET_T fd1 = SOCKET_INVALID, fd2 = SOCKET_INVALID;
+    SOCKET_T sfd1 = SOCKET_INVALID;
+    SOCKET_T sfd2 = SOCKET_INVALID;
     WOLFSSL_BIO *bio1 = NULL, *bio2 = NULL;
     WOLFSSL_BIO_ADDR *bio_addr1 = NULL, *bio_addr2 = NULL;
     SOCKADDR_IN sin1, sin2;
@@ -59194,21 +59195,21 @@ static int test_wolfSSL_BIO_datagram(void)
     StartTCP();
 
     if (EXPECT_SUCCESS()) {
-        fd1 = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-        ExpectIntNE(fd1, SOCKET_INVALID);
+        sfd1 = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        ExpectIntNE(sfd1, SOCKET_INVALID);
     }
     if (EXPECT_SUCCESS()) {
-        fd2 = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-        ExpectIntNE(fd2, SOCKET_INVALID);
+        sfd2 = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        ExpectIntNE(sfd2, SOCKET_INVALID);
     }
 
     if (EXPECT_SUCCESS()) {
-        bio1 = wolfSSL_BIO_new_dgram(fd1, 1 /* closeF */);
+        bio1 = wolfSSL_BIO_new_dgram(sfd1, 1 /* closeF */);
         ExpectNotNull(bio1);
     }
 
     if (EXPECT_SUCCESS()) {
-        bio2 = wolfSSL_BIO_new_dgram(fd2, 1 /* closeF */);
+        bio2 = wolfSSL_BIO_new_dgram(sfd2, 1 /* closeF */);
         ExpectNotNull(bio2);
     }
 
@@ -59217,9 +59218,9 @@ static int test_wolfSSL_BIO_datagram(void)
         sin1.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         sin1.sin_port = 0;
         slen = (socklen_t)sizeof(sin1);
-        ExpectIntEQ(bind(fd1, (const struct sockaddr *)&sin1, slen), 0);
-        ExpectIntEQ(setsockopt(fd1, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout)), 0);
-        ExpectIntEQ(getsockname(fd1, (struct sockaddr *)&sin1, &slen), 0);
+        ExpectIntEQ(bind(sfd1, (const struct sockaddr *)&sin1, slen), 0);
+        ExpectIntEQ(setsockopt(sfd1, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout)), 0);
+        ExpectIntEQ(getsockname(sfd1, (struct sockaddr *)&sin1, &slen), 0);
     }
 
     if (EXPECT_SUCCESS()) {
@@ -59227,9 +59228,9 @@ static int test_wolfSSL_BIO_datagram(void)
         sin2.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         sin2.sin_port = 0;
         slen = (socklen_t)sizeof(sin2);
-        ExpectIntEQ(bind(fd2, (const struct sockaddr *)&sin2, slen), 0);
-        ExpectIntEQ(setsockopt(fd2, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout)), 0);
-        ExpectIntEQ(getsockname(fd2, (struct sockaddr *)&sin2, &slen), 0);
+        ExpectIntEQ(bind(sfd2, (const struct sockaddr *)&sin2, slen), 0);
+        ExpectIntEQ(setsockopt(sfd2, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout)), 0);
+        ExpectIntEQ(getsockname(sfd2, (struct sockaddr *)&sin2, &slen), 0);
     }
 
     if (EXPECT_SUCCESS()) {
@@ -59276,8 +59277,8 @@ static int test_wolfSSL_BIO_datagram(void)
 
     /* now "connect" the sockets. */
 
-    ExpectIntEQ(connect(fd1, (const struct sockaddr *)&sin2, (socklen_t)sizeof(sin2)), 0);
-    ExpectIntEQ(connect(fd2, (const struct sockaddr *)&sin1, (socklen_t)sizeof(sin1)), 0);
+    ExpectIntEQ(connect(sfd1, (const struct sockaddr *)&sin2, (socklen_t)sizeof(sin2)), 0);
+    ExpectIntEQ(connect(sfd2, (const struct sockaddr *)&sin1, (socklen_t)sizeof(sin1)), 0);
 
     if (EXPECT_SUCCESS()) {
         XMEMCPY(&bio_addr2->sa_in, &sin2, sizeof(sin2));
@@ -59305,8 +59306,8 @@ static int test_wolfSSL_BIO_datagram(void)
     /* now "disconnect" the sockets and attempt transmits expected to fail. */
 
     sin1.sin_family = AF_UNSPEC;
-    ExpectIntEQ(connect(fd1, (const struct sockaddr *)&sin1, (socklen_t)sizeof(sin1)), 0);
-    ExpectIntEQ(connect(fd2, (const struct sockaddr *)&sin1, (socklen_t)sizeof(sin1)), 0);
+    ExpectIntEQ(connect(sfd1, (const struct sockaddr *)&sin1, (socklen_t)sizeof(sin1)), 0);
+    ExpectIntEQ(connect(sfd2, (const struct sockaddr *)&sin1, (socklen_t)sizeof(sin1)), 0);
     sin1.sin_family = AF_INET;
 
     ExpectIntEQ((int)wolfSSL_BIO_ctrl(bio1, BIO_CTRL_DGRAM_SET_CONNECTED, 0, NULL), WOLFSSL_SUCCESS);
@@ -59330,13 +59331,13 @@ static int test_wolfSSL_BIO_datagram(void)
     if (bio1) {
         ret = wolfSSL_BIO_free(bio1);
         ExpectIntEQ(ret, WOLFSSL_SUCCESS);
-    } else if (fd1 != SOCKET_INVALID)
-        CloseSocket(fd1);
+    } else if (!SOCKET_IS_INVALID(sfd1))
+        CloseSocket(sfd1);
     if (bio2) {
         ret = wolfSSL_BIO_free(bio2);
         ExpectIntEQ(ret, WOLFSSL_SUCCESS);
-    } else if (fd2 != SOCKET_INVALID)
-        CloseSocket(fd2);
+    } else if (!SOCKET_IS_INVALID(sfd2))
+        CloseSocket(sfd2);
     if (bio_addr1)
         wolfSSL_BIO_ADDR_free(bio_addr1);
     if (bio_addr2)
@@ -78741,17 +78742,17 @@ static void test_wolfSSL_dtls_plaintext_server(WOLFSSL* ssl)
 static void test_wolfSSL_dtls_plaintext_client(WOLFSSL* ssl)
 {
     byte ch[50];
-    int fd = wolfSSL_get_wfd(ssl);
+    SOCKET_T sfd = wolfSSL_get_wfd(ssl);
     byte msg[] = "This is a msg for the server";
     byte reply[40];
 
-    AssertIntGE(fd, 0);
+    AssertIntGE(sfd, 0);
     generateDTLSMsg(ch, sizeof(ch), 20, client_hello, 0);
     /* Server should ignore this datagram */
-    AssertIntEQ(send(fd, ch, sizeof(ch), 0), sizeof(ch));
+    AssertIntEQ(send(sfd, ch, sizeof(ch), 0), sizeof(ch));
     generateDTLSMsg(ch, sizeof(ch), 20, client_hello, 10000);
     /* Server should ignore this datagram */
-    AssertIntEQ(send(fd, ch, sizeof(ch), 0), sizeof(ch));
+    AssertIntEQ(send(sfd, ch, sizeof(ch), 0), sizeof(ch));
 
     AssertIntEQ(wolfSSL_write(ssl, msg, sizeof(msg)), sizeof(msg));
     AssertIntGT(wolfSSL_read(ssl, reply, sizeof(reply)),0);
@@ -78812,7 +78813,7 @@ static void test_wolfSSL_dtls12_fragments_spammer(WOLFSSL* ssl)
     size_t seq_offset = 0;
     size_t msg_offset = 0;
     int i;
-    int fd = wolfSSL_get_wfd(ssl);
+    SOCKET_T sfd = wolfSSL_get_wfd(ssl);
     int ret = wolfSSL_connect_cert(ssl); /* This gets us past the cookie */
     word32 seq_number = 100; /* start high so server definitely reads this */
     word16 msg_number = 50; /* start high so server has to buffer this */
@@ -78862,7 +78863,7 @@ static void test_wolfSSL_dtls12_fragments_spammer(WOLFSSL* ssl)
         delay.tv_nsec = 10000000; /* wait 0.01 seconds */
         c32toa(seq_number, b + seq_offset);
         c16toa(msg_number, b + msg_offset);
-        ret = (int)send(fd, b, 55, 0);
+        ret = (int)send(sfd, b, 55, 0);
         nanosleep(&delay, NULL);
     }
 }
@@ -78874,7 +78875,7 @@ static void test_wolfSSL_dtls13_fragments_spammer(WOLFSSL* ssl)
     byte b[150]; /* buffer for the messages to send */
     size_t idx = 0;
     size_t msg_offset = 0;
-    int fd = wolfSSL_get_wfd(ssl);
+    SOCKET_T sfd = wolfSSL_get_wfd(ssl);
     word16 msg_number = 10; /* start high so server has to buffer this */
     int ret = wolfSSL_connect_cert(ssl); /* This gets us past the cookie */
     AssertIntEQ(ret, 1);
@@ -78908,7 +78909,7 @@ static void test_wolfSSL_dtls13_fragments_spammer(WOLFSSL* ssl)
         ret = sendSz = BuildTls13Message(ssl, sendBuf, sendSz, b,
             (int)idx, handshake, 0, 0, 0);
         if (sendSz > 0)
-            ret = (int)send(fd, sendBuf, (size_t)sendSz, 0);
+            ret = (int)send(sfd, sendBuf, (size_t)sendSz, 0);
         nanosleep(&delay, NULL);
     }
 }
@@ -78969,7 +78970,8 @@ static int test_wolfSSL_dtls_fragments(void)
 
 static void test_wolfSSL_dtls_send_alert(WOLFSSL* ssl)
 {
-    int fd, ret;
+    SOCKET_T sfd;
+    int ret;
     byte alert_msg[] = {
         0x15, /* alert type */
         0xfe, 0xfd, /* version */
@@ -78980,9 +78982,9 @@ static void test_wolfSSL_dtls_send_alert(WOLFSSL* ssl)
         0x46 /* protocol version */
     };
 
-    fd = wolfSSL_get_wfd(ssl);
-    AssertIntGE(fd, 0);
-    ret = (int)send(fd, alert_msg, sizeof(alert_msg), 0);
+    sfd = wolfSSL_get_wfd(ssl);
+    AssertIntGE(sfd, 0);
+    ret = (int)send(sfd, alert_msg, sizeof(alert_msg), 0);
     AssertIntGT(ret, 0);
 }
 
@@ -79036,8 +79038,8 @@ static int test_wolfSSL_ignore_alert_before_cookie(void)
 
 static void test_wolfSSL_send_bad_record(WOLFSSL* ssl)
 {
+    SOCKET_T sfd;
     int ret;
-    int fd;
 
     byte bad_msg[] = {
         0x17, /* app data  */
@@ -79051,9 +79053,9 @@ static void test_wolfSSL_send_bad_record(WOLFSSL* ssl)
         0x03, 0x18, 0x72
     };
 
-    fd = wolfSSL_get_wfd(ssl);
-    AssertIntGE(fd, 0);
-    ret = (int)send(fd, bad_msg, sizeof(bad_msg), 0);
+    sfd = wolfSSL_get_wfd(ssl);
+    AssertIntGE(sfd, 0);
+    ret = (int)send(sfd, bad_msg, sizeof(bad_msg), 0);
     AssertIntEQ(ret, sizeof(bad_msg));
     ret = wolfSSL_write(ssl, "badrecordtest", sizeof("badrecordtest"));
     AssertIntEQ(ret, sizeof("badrecordtest"));
@@ -79141,9 +79143,9 @@ static wolfSSL_Mutex test_AEAD_mutex = WOLFSSL_MUTEX_INITIALIZER(test_AEAD_mutex
 static int test_AEAD_fail_decryption = 0;
 static int test_AEAD_cbiorecv(WOLFSSL *ssl, char *buf, int sz, void *ctx)
 {
-    int fd = wolfSSL_get_fd(ssl);
+    SOCKET_T sfd = wolfSSL_get_fd(ssl);
     int ret = -1;
-    if (fd >= 0 && (ret = (int)recv(fd, buf, sz, 0)) > 0) {
+    if (!SOCKET_IS_INVALID(sfd) && (ret = (int)recv(sfd, buf, sz, 0)) > 0) {
         if (test_AEAD_fail_decryption) {
             /* Modify the packet to trigger a decryption failure */
             buf[ret/2] ^= 0xFF;
@@ -79291,11 +79293,11 @@ static void test_AEAD_limit_server(WOLFSSL* ssl)
     char msgBuf[] = "Sending data";
     int ret = WOLFSSL_SUCCESS;
     w64wrapper sendLimit;
-    SOCKET_T fd = wolfSSL_get_fd(ssl);
+    SOCKET_T sfd = wolfSSL_get_fd(ssl);
     struct timespec delay;
     XMEMSET(&delay, 0, sizeof(delay));
     delay.tv_nsec = 100000000; /* wait 0.1 seconds */
-    tcp_set_nonblocking(&fd); /* So that read doesn't block */
+    tcp_set_nonblocking(&sfd); /* So that read doesn't block */
     wolfSSL_dtls_set_using_nonblock(ssl, 1);
     test_AEAD_get_limits(ssl, NULL, NULL, &sendLimit);
     while (!
@@ -79361,7 +79363,8 @@ static int test_wolfSSL_dtls_AEAD_limit(void)
     !defined(DEBUG_VECTOR_REGISTER_ACCESS_FUZZING)
 static void test_wolfSSL_dtls_send_ch(WOLFSSL* ssl)
 {
-    int fd, ret;
+    SOCKET_T sfd;
+    int ret;
     byte ch_msg[] = {
         0x16, 0xfe, 0xfd, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
         0xfa, 0x01, 0x00, 0x01, 0xee, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
@@ -79409,19 +79412,20 @@ static void test_wolfSSL_dtls_send_ch(WOLFSSL* ssl)
         0x31, 0x68, 0x4c
     };
 
-    fd = wolfSSL_get_wfd(ssl);
-    AssertIntGE(fd, 0);
-    ret = (int)send(fd, ch_msg, sizeof(ch_msg), 0);
+    sfd = wolfSSL_get_wfd(ssl);
+    AssertIntGE(sfd, 0);
+    ret = (int)send(sfd, ch_msg, sizeof(ch_msg), 0);
     AssertIntGT(ret, 0);
     /* consume the HRR otherwise handshake will fail */
-    ret = (int)recv(fd, ch_msg, sizeof(ch_msg), 0);
+    ret = (int)recv(sfd, ch_msg, sizeof(ch_msg), 0);
     AssertIntGT(ret, 0);
 }
 
 #if defined(WOLFSSL_DTLS13) && defined(WOLFSSL_SEND_HRR_COOKIE)
 static void test_wolfSSL_dtls_send_ch_with_invalid_cookie(WOLFSSL* ssl)
 {
-    int fd, ret;
+    SOCKET_T sfd;
+    int ret;
     byte ch_msh_invalid_cookie[] = {
       0x16, 0xfe, 0xfd, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02,
       0x4e, 0x01, 0x00, 0x02, 0x42, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x02,
@@ -79481,13 +79485,13 @@ static void test_wolfSSL_dtls_send_ch_with_invalid_cookie(WOLFSSL* ssl)
         0x02, 0x02, 0x2f
     };
 
-    fd = wolfSSL_get_wfd(ssl);
-    if (fd >= 0) {
-        ret = (int)send(fd, ch_msh_invalid_cookie,
+    sfd = wolfSSL_get_wfd(ssl);
+    if (!SOCKET_IS_INVALID(sfd)) {
+        ret = (int)send(sfd, ch_msh_invalid_cookie,
                 sizeof(ch_msh_invalid_cookie), 0);
         AssertIntGT(ret, 0);
         /* should reply with an illegal_parameter reply */
-        ret = (int)recv(fd, alert_reply, sizeof(alert_reply), 0);
+        ret = (int)recv(sfd, alert_reply, sizeof(alert_reply), 0);
         AssertIntEQ(ret, sizeof(expected_alert_reply));
         AssertIntEQ(XMEMCMP(alert_reply, expected_alert_reply,
                 sizeof(expected_alert_reply)), 0);
@@ -79584,7 +79588,7 @@ static int test_wolfSSL_dtls_compare_stateless_read_cb_once(WOLFSSL *ssl,
 static void test_wolfSSL_dtls_compare_stateless(WOLFSSL* ssl)
 {
     /* Compare the ssl object before and after one ClientHello msg */
-    SOCKET_T fd = wolfSSL_get_fd(ssl);
+    SOCKET_T sfd = wolfSSL_get_fd(ssl);
     int res;
     int err;
     word32 initHash;
@@ -79597,7 +79601,7 @@ static void test_wolfSSL_dtls_compare_stateless(WOLFSSL* ssl)
     initHash = test_wolfSSL_dtls_stateless_HashWOLFSSL(ssl);
     (void)initHash;
 
-    res = tcp_select(fd, 5);
+    res = tcp_select(sfd, 5);
     /* We are expecting a msg. A timeout indicates failure. */
     AssertIntEQ(res, TEST_RECV_READY);
 
@@ -80019,8 +80023,8 @@ static THREAD_RETURN WOLFSSL_THREAD SSL_read_test_server_thread(void* args)
     callback_functions* callbacks = NULL;
     WOLFSSL_CTX* ctx = NULL;
     WOLFSSL*     ssl = NULL;
-    SOCKET_T     sfd = 0;
-    SOCKET_T     cfd = 0;
+    SOCKET_T     sfd = SOCKET_INVALID;
+    SOCKET_T     cfd = SOCKET_INVALID;
     word16       port;
     char msg[] = "I hear you fa shizzle!";
     int  len   = (int) XSTRLEN(msg);
@@ -80153,7 +80157,7 @@ static THREAD_RETURN WOLFSSL_THREAD SSL_read_test_client_thread(void* args)
     callback_functions* callbacks = NULL;
     WOLFSSL_CTX* ctx = NULL;
     WOLFSSL*     ssl = NULL;
-    SOCKET_T     sfd = 0;
+    SOCKET_T     sfd = SOCKET_INVALID;
     char msg[] = "hello wolfssl server!";
     int  len   = (int) XSTRLEN(msg);
     char input[1024];
@@ -85993,7 +85997,7 @@ static int test_dtls_msg_from_other_peer_cb(WOLFSSL_CTX *ctx, WOLFSSL *ssl)
 {
     char buf[1] = {'t'};
     SOCKADDR_IN_T addr;
-    int sock_fd;
+    SOCKET_T sockfd;
     word16 port;
     int err;
 
@@ -86007,17 +86011,17 @@ static int test_dtls_msg_from_other_peer_cb(WOLFSSL_CTX *ctx, WOLFSSL *ssl)
     if (err != 0)
         return -1;
 
-    sock_fd = socket(AF_INET_V, SOCK_DGRAM, 0);
-    if (sock_fd == -1)
+    sockfd = socket(AF_INET_V, SOCK_DGRAM, 0);
+    if (SOCKET_IS_INVALID(sockfd))
         return -1;
     build_addr(&addr, wolfSSLIP, port, 1, 0);
 
     /* send a packet to the server. Being another socket, the kernel will ensure
      * the source port will be different. */
-    err = (int)sendto(sock_fd, buf, sizeof(buf), 0, (SOCKADDR*)&addr,
+    err = (int)sendto(sockfd, buf, sizeof(buf), 0, (SOCKADDR*)&addr,
         sizeof(addr));
 
-    close(sock_fd);
+    close(sockfd);
     if (err == -1)
         return -1;
 
@@ -86070,7 +86074,7 @@ static int test_dtls_ipv6_check(void)
     WOLFSSL *ssl_c = NULL;
     WOLFSSL *ssl_s = NULL;
     SOCKADDR_IN fake_addr6;
-    int sockfd = -1;
+    SOCKET_T sockfd = SOCKET_INVALID;
 
     ExpectNotNull(ctx_c = wolfSSL_CTX_new(wolfDTLSv1_2_client_method()));
     ExpectNotNull(ssl_c  = wolfSSL_new(ctx_c));
@@ -86102,7 +86106,7 @@ static int test_dtls_ipv6_check(void)
     wolfSSL_dtls_set_using_nonblock(ssl_s, 1);
     ExpectIntNE(wolfSSL_accept(ssl_s), WOLFSSL_SUCCESS);
     ExpectIntEQ(ssl_s->error, WC_NO_ERR_TRACE(SOCKET_ERROR_E));
-    if (sockfd != -1)
+    if (!SOCKET_IS_INVALID(sockfd))
         close(sockfd);
 
     wolfSSL_free(ssl_c);

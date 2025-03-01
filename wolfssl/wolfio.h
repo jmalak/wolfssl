@@ -59,6 +59,8 @@
 
 #if defined(__WATCOMC__)
     #if defined(__NT__)
+//        #include <winsock2.h>
+//        #include <ws2tcpip.h>
     #elif defined(__OS2__)
         #include <errno.h>
         #include <os2.h>
@@ -82,6 +84,8 @@
         #include <netinet/in.h>
     #endif
 #elif defined(USE_WINDOWS_API)
+//    #include <winsock2.h>
+//    #include <ws2tcpip.h>
 #else
     #if defined(WOLFSSL_LWIP) && !defined(WOLFSSL_APACHE_MYNEWT)
         /* lwIP needs to be configured to use sockets API in this mode */
@@ -177,6 +181,7 @@
         #include <fclfcntl.h>
     #elif defined(WOLFSSL_EMNET)
         #include <IP/IP.h>
+        #define XSOCKLENT   int
     #elif !defined(WOLFSSL_NO_SOCK)
         #include <sys/types.h>
         #include <errno.h>
@@ -220,7 +225,7 @@
         #include <errno.h>
     #endif
 
-#endif /* USE_WINDOWS_API */
+#endif
 
 #ifdef __sun
     #include <sys/filio.h>
@@ -385,7 +390,6 @@
     #define SOCKET_ECONNREFUSED ERR_CONN
     #define SOCKET_ECONNABORTED ERR_ABRT
 #elif defined(WOLFSSL_EMNET)
-    #define XSOCKLENT           int
     #define SOCKET_EWOULDBLOCK  IP_ERR_WOULD_BLOCK
     #define SOCKET_EAGAIN       IP_ERR_WOULD_BLOCK
     #define SOCKET_ECONNRESET   IP_ERR_CONN_RESET
@@ -407,20 +411,20 @@
 #ifdef DEVKITPRO
     /* from network.h */
     #include <network.h>
-    #define SEND_FUNCTION net_send
-    #define RECV_FUNCTION net_recv
+    #define SEND_FUNCTION(a,b,c,d) net_send((a),(b),(c),(d))
+    #define RECV_FUNCTION(a,b,c,d) net_recv((a),(b),(c),(d))
 #elif defined(WOLFSSL_ESPIDF)
-    #define SEND_FUNCTION send
-    #define RECV_FUNCTION recv
+    #define SEND_FUNCTION(a,b,c,d) send((a),(b),(c),(d))
+    #define RECV_FUNCTION(a,b,c,d) recv((a),(b),(c),(d))
     #if !defined(HAVE_SOCKADDR) && !defined(WOLFSSL_NO_SOCK)
         #define HAVE_SOCKADDR
     #endif
 #elif defined(WOLFSSL_LWIP) && !defined(WOLFSSL_APACHE_MYNEWT)
-    #define SEND_FUNCTION lwip_send
-    #define RECV_FUNCTION lwip_recv
+    #define SEND_FUNCTION(a,b,c,d) lwip_send((a),(b),(c),(d))
+    #define RECV_FUNCTION(a,b,c,d) lwip_recv((a),(b),(c),(d))
 #elif defined(WOLFSSL_PICOTCP)
-    #define SEND_FUNCTION pico_send
-    #define RECV_FUNCTION pico_recv
+    #define SEND_FUNCTION(a,b,c,d) pico_send((a),(b),(c),(d))
+    #define RECV_FUNCTION(a,b,c,d) pico_recv((a),(b),(c),(d))
 #elif defined(FREERTOS_TCP)
     #define RECV_FUNCTION(a,b,c,d)  FreeRTOS_recv((Socket_t)(a),(void*)(b), (size_t)(c), (BaseType_t)(d))
     #define SEND_FUNCTION(a,b,c,d)  FreeRTOS_send((Socket_t)(a),(void*)(b), (size_t)(c), (BaseType_t)(d))
@@ -428,35 +432,36 @@
     /*socket.h already has "typedef struct sockaddr SOCKADDR;"
       so don't redefine it in wolfSSL */
     #define HAVE_SOCKADDR_DEFINED
-    #define SEND_FUNCTION send
-    #define RECV_FUNCTION recv
+    #define SEND_FUNCTION(a,b,c,d) send((a),(b),(c),(d))
+    #define RECV_FUNCTION(a,b,c,d) recv((a),(b),(c),(d))
 #elif defined(WOLFSSL_NUCLEUS_1_2)
-    #define SEND_FUNCTION NU_Send
-    #define RECV_FUNCTION NU_Recv
+    #define SEND_FUNCTION(a,b,c,d) NU_Send((a),(b),(c),(d))
+    #define RECV_FUNCTION(a,b,c,d) NU_Recv((a),(b),(c),(d))
 #elif defined(NUCLEUS_PLUS_2_3)
-    #define SEND_FUNCTION          nucyassl_send
-    #define RECV_FUNCTION          nucyassl_recv
-    #define DTLS_RECVFROM_FUNCTION nucyassl_recvfrom
-    #define DTLS_SENDTO_FUNCTION   nucyassl_sendto
+    #define SEND_FUNCTION(a,b,c,d) nucyassl_send((a),(b),(c),(d))
+    #define RECV_FUNCTION(a,b,c,d) nucyassl_recv((a),(b),(c),(d))
+    #define DTLS_RECVFROM_FUNCTION(a,b,c,d,e,f) nucyassl_recvfrom((a),(b),(c),(d),(e),(f))
+    #define DTLS_SENDTO_FUNCTION(a,b,c,d,e,f)   nucyassl_sendto((a),(b),(c),(d),(e),(f))
 #elif defined(FUSION_RTOS)
-    #define SEND_FUNCTION FNS_SEND
-    #define RECV_FUNCTION FNS_RECV
+    #define SEND_FUNCTION(a,b,c,d) FNS_SEND((a),(b),(c),(d))
+    #define RECV_FUNCTION(a,b,c,d) FNS_RECV((a),(b),(c),(d))
 #elif defined(WOLFSSL_ZEPHYR)
     #ifndef WOLFSSL_MAX_SEND_SZ
         #define WOLFSSL_MAX_SEND_SZ       256
     #endif
 
-    #define SEND_FUNCTION send
-    #define RECV_FUNCTION recv
+    #define SEND_FUNCTION(a,b,c,d) send((a),(b),(c),(d))
+    #define RECV_FUNCTION(a,b,c,d) recv((a),(b),(c),(d))
 #elif defined(WOLFSSL_LINUXKM)
-    #define SEND_FUNCTION linuxkm_send
-    #define RECV_FUNCTION linuxkm_recv
+    #define SOCKET_T struct socket *
+    #define SEND_FUNCTION(a,b,c,d) linuxkm_send((a),(b),(c),(d))
+    #define RECV_FUNCTION(a,b,c,d) linuxkm_recv((a),(b),(c),(d))
 #elif defined(WOLFSSL_SGX)
-    #define SEND_FUNCTION send
-    #define RECV_FUNCTION recv
+    #define SEND_FUNCTION(a,b,c,d) send((a),(b),(c),(d))
+    #define RECV_FUNCTION(a,b,c,d) recv((a),(b),(c),(d))
 #else
-    #define SEND_FUNCTION send
-    #define RECV_FUNCTION recv
+    #define SEND_FUNCTION(a,b,c,d) send((a),(b),(c),(d))
+    #define RECV_FUNCTION(a,b,c,d) recv((a),(b),(c),(d))
     #if !defined(HAVE_SOCKADDR) && !defined(WOLFSSL_NO_SOCK)
         #define HAVE_SOCKADDR
     #endif
@@ -483,41 +488,81 @@
 
     /* Socket Addr Support */
     #ifdef HAVE_SOCKADDR
-    #ifndef HAVE_SOCKADDR_DEFINED
-        typedef struct sockaddr         SOCKADDR;
-    #endif
-        typedef struct sockaddr_storage SOCKADDR_S;
-        typedef struct sockaddr_in      SOCKADDR_IN;
-        #ifdef WOLFSSL_IPV6
-            typedef struct sockaddr_in6 SOCKADDR_IN6;
+        #ifdef USE_WINDOWS_API
+            typedef struct sockaddr_storage SOCKADDR_S;
+            #if !defined(HAVE_GETADDRINFO)
+                #define HAVE_GETADDRINFO
+            #endif
+        #else
+            #ifndef HAVE_SOCKADDR_DEFINED
+                typedef struct sockaddr     SOCKADDR;
+            #endif
+            typedef struct sockaddr_storage SOCKADDR_S;
+            typedef struct sockaddr_in      SOCKADDR_IN;
+            #ifdef WOLFSSL_IPV6
+                typedef struct sockaddr_in6 SOCKADDR_IN6;
+            #endif
+            #if defined(HAVE_SYS_UN_H) && !defined(WOLFSSL_NO_SOCKADDR_UN)
+                #include <sys/un.h>
+                typedef struct sockaddr_un  SOCKADDR_UN;
+            #endif
+            typedef struct hostent          HOSTENT;
+            #if defined(HAVE_GETADDRINFO)
+                typedef struct addrinfo     ADDRINFO;
+            #endif
         #endif
-        #if defined(HAVE_SYS_UN_H) && !defined(WOLFSSL_NO_SOCKADDR_UN)
-            #include <sys/un.h>
-            typedef struct sockaddr_un SOCKADDR_UN;
-        #endif
-        typedef struct hostent          HOSTENT;
     #endif /* HAVE_SOCKADDR */
-
-    #if defined(HAVE_GETADDRINFO)
-        typedef struct addrinfo         ADDRINFO;
-    #endif
 #endif /* WOLFSSL_NO_SOCK */
 
+#endif /* USE_WOLFSSL_IO || HAVE_HTTP_CLIENT */
+
+#ifndef SOCKET_T
+    #define SOCKET_T        long long
+#endif
+#ifndef INVALID_SOCKET
+    #define INVALID_SOCKET  (-1)
+#endif
+#ifndef SOCKET_INVALID
+    #define SOCKET_INVALID  INVALID_SOCKET
+#endif
+#ifndef SOCKET_IS_INVALID
+    #define SOCKET_IS_INVALID(x) ((x) == SOCKET_INVALID)
+#endif
+
+#ifdef WOLFSSL_LINUXKM
+#define CTX2IOCTX(x)    ((SOCKET_T *)(x))
+#define IOCTX2CTX(x)    ((void *)(x))
+#elif defined(HAVE_NETX)
+#define CTX2IOCTX(x)    ((NetX_Ctx *)(x))
+#define IOCTX2CTX(x)    ((void *)(x))
+#elif defined(MICRIUM)
+#define CTX2IOCTX(x)    (*(NET_SOCK_ID *)(x))
+#define IOCTX2CTX(x)    ((void *)&(x))
+#elif defined(WOLFSSL_APACHE_MYNEWT) && !defined(WOLFSSL_LWIP)
+#define CTX2IOCTX(x)    ((Mynewt_Ctx *)(x))
+#define IOCTX2CTX(x)    ((void *)(x))
+#else
+#define CTX2IOCTX(x)    (*(SOCKET_T *)(x))
+#define IOCTX2CTX(x)    ((void *)&(x))
+#endif
+#define CTX2DTLSCTX(x)  ((WOLFSSL_DTLS_CTX *)(x))
+
+#if defined(USE_WOLFSSL_IO) || defined(HAVE_HTTP_CLIENT)
 
 /* IO API's */
 #ifdef HAVE_IO_TIMEOUT
-    WOLFSSL_API  int wolfIO_SetBlockingMode(SOCKET_T sockfd, int non_blocking);
+    WOLFSSL_API  int wolfIO_SetBlockingMode(SOCKET_T sockfd, int nonblocking);
     WOLFSSL_API void wolfIO_SetTimeout(int to_sec);
     WOLFSSL_API  int wolfIO_Select(SOCKET_T sockfd, int to_sec);
 #endif
 WOLFSSL_API  int wolfIO_TcpConnect(SOCKET_T* sockfd, const char* ip,
     unsigned short port, int to_sec);
 #ifdef HAVE_SOCKADDR
-WOLFSSL_API int wolfIO_TcpAccept(SOCKET_T sockfd, SOCKADDR* peer_addr, XSOCKLENT* peer_len);
+WOLFSSL_API SOCKET_T wolfIO_TcpAccept(SOCKET_T sockfd, SOCKADDR* peer_addr, XSOCKLENT* peer_len);
 #endif
 WOLFSSL_API int wolfIO_TcpBind(SOCKET_T* sockfd, word16 port);
-WOLFSSL_API  int wolfIO_Send(SOCKET_T sd, char *buf, int sz, int wrFlags);
-WOLFSSL_API  int wolfIO_Recv(SOCKET_T sd, char *buf, int sz, int rdFlags);
+WOLFSSL_API  int wolfIO_Send(void *ctx, char *buf, int sz, int wrFlags);
+WOLFSSL_API  int wolfIO_Recv(void *ctx, char *buf, int sz, int rdFlags);
 
 #ifdef WOLFSSL_HAVE_BIO_ADDR
 
@@ -539,8 +584,8 @@ union WOLFSSL_BIO_ADDR {
 typedef union WOLFSSL_BIO_ADDR WOLFSSL_BIO_ADDR;
 
 #if defined(WOLFSSL_DTLS) && defined(OPENSSL_EXTRA)
-WOLFSSL_API  int wolfIO_SendTo(SOCKET_T sd, WOLFSSL_BIO_ADDR *addr, char *buf, int sz, int wrFlags);
-WOLFSSL_API  int wolfIO_RecvFrom(SOCKET_T sd, WOLFSSL_BIO_ADDR *addr, char *buf, int sz, int rdFlags);
+WOLFSSL_API  int wolfIO_SendTo(void *ctx, WOLFSSL_BIO_ADDR *addr, char *buf, int sz, int wrFlags);
+WOLFSSL_API  int wolfIO_RecvFrom(void *ctx, WOLFSSL_BIO_ADDR *addr, char *buf, int sz, int rdFlags);
 #endif
 
 #endif /* WOLFSSL_HAVE_BIO_ADDR */
@@ -622,7 +667,7 @@ typedef int (*WolfSSLGenericIORecvCb)(char *buf, int sz, void *ctx);
     WOLFSSL_API int wolfIO_HttpProcessResponseOcspGenericIO(
         WolfSSLGenericIORecvCb ioCb, void* ioCbCtx, unsigned char** respBuf,
         unsigned char* httpBuf, int httpBufSz, void* heap);
-    WOLFSSL_API int wolfIO_HttpProcessResponseOcsp(int sfd,
+    WOLFSSL_API int wolfIO_HttpProcessResponseOcsp(void *ctx,
         unsigned char** respBuf, unsigned char* httpBuf, int httpBufSz,
         void* heap);
 
@@ -634,7 +679,7 @@ typedef int (*WolfSSLGenericIORecvCb)(char *buf, int sz, void *ctx);
 #ifdef HAVE_CRL_IO
     WOLFSSL_API int wolfIO_HttpBuildRequestCrl(const char* url, int urlSz,
         const char* domainName, unsigned char* buf, int bufSize);
-    WOLFSSL_API int wolfIO_HttpProcessResponseCrl(WOLFSSL_CRL* crl, int sfd,
+    WOLFSSL_API int wolfIO_HttpProcessResponseCrl(WOLFSSL_CRL* crl, void *ctx,
         unsigned char* httpBuf, int httpBufSz);
 
     WOLFSSL_API int EmbedCrlLookup(WOLFSSL_CRL* crl, const char* url,
@@ -656,7 +701,7 @@ typedef int (*WolfSSLGenericIORecvCb)(char *buf, int sz, void *ctx);
         WolfSSLGenericIORecvCb ioCb, void* ioCbCtx, const char** appStrList,
         unsigned char** respBuf, unsigned char* httpBuf, int httpBufSz,
         int dynType, void* heap);
-    WOLFSSL_API  int wolfIO_HttpProcessResponse(int sfd, const char** appStrList,
+    WOLFSSL_API  int wolfIO_HttpProcessResponse(void *ctx, const char** appStrList,
         unsigned char** respBuf, unsigned char* httpBuf, int httpBufSz,
         int dynType, void* heap);
 #endif /* HAVE_HTTP_CLIENT */

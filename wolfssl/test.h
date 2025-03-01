@@ -85,7 +85,7 @@
     #endif /* HAVE_ECC */
 #endif /*HAVE_PK_CALLBACKS */
 
-#ifdef __WATCOMC__
+#if defined(__WATCOMC__)
     #define SNPRINTF snprintf
     #if defined(__NT__)
         #include <winsock2.h>
@@ -94,13 +94,12 @@
         #ifdef TEST_IPV6            /* don't require newer SDK for IPV4 */
             #include <wspiapi.h>
         #endif
-        #define SOCKET_T SOCKET
-        #define XSLEEP_MS(t) Sleep(t)
+        #define XSLEEP_MS(m) Sleep(m)
     #elif defined(__OS2__)
         #include <netdb.h>
         #include <sys/ioctl.h>
         #include <tcpustd.h>
-        #define SOCKET_T int
+        #define XSLEEP_MS(m) delay(m)
     #elif defined(__UNIX__)
         #include <string.h>
         #include <netdb.h>
@@ -113,7 +112,6 @@
         #ifdef HAVE_PTHREAD
             #include <pthread.h>
         #endif
-        #define SOCKET_T int
         #ifndef SO_NOSIGPIPE
             #include <signal.h>  /* ignore SIGPIPE */
         #endif
@@ -128,16 +126,13 @@
     #include <winsock2.h>
     #include <ws2tcpip.h>
     #include <process.h>
-    #ifdef TEST_IPV6            /* don't require newer SDK for IPV4 */
+    #ifdef TEST_IPV6
         #include <wspiapi.h>
     #endif
-    #define SOCKET_T SOCKET
     #define SNPRINTF _snprintf
     #define XSLEEP_MS(t) Sleep(t)
 #elif defined(WOLFSSL_MDK_ARM) || defined(WOLFSSL_KEIL_TCP_NET)
     #include <string.h>
-    #include "rl_net.h"
-    #define SOCKET_T int
     typedef int socklen_t ;
     #define inet_addr wolfSSL_inet_addr
     static unsigned long wolfSSL_inet_addr(const char *cp)
@@ -159,7 +154,6 @@
         #include <sys/types.h>
     #endif
     #include <arpa/inet.h>
-    #include <sys/socket.h>
     #include <ti/sysbios/knl/Task.h>
     struct hostent {
         char *h_name; /* official name of host */
@@ -168,11 +162,9 @@
         int h_length; /* length of address */
         char **h_addr_list; /* list of addresses from name server */
     };
-    #define SOCKET_T int
     #define XSLEEP_MS(t) Task_sleep(t/1000)
 #elif defined(WOLFSSL_VXWORKS)
     #include <hostLib.h>
-    #include <sockLib.h>
     #include <arpa/inet.h>
     #include <string.h>
     #include <selectLib.h>
@@ -186,29 +178,22 @@
     #endif
     #include <netdb.h>
     #include <pthread.h>
-    #define SOCKET_T int
 #elif defined(WOLFSSL_ZEPHYR)
-    #include <version.h>
     #include <string.h>
     #include <sys/types.h>
     #if KERNEL_VERSION_NUMBER >= 0x30100
-        #include <zephyr/net/socket.h>
         #ifdef CONFIG_POSIX_API
             #include <zephyr/posix/poll.h>
             #include <zephyr/posix/netdb.h>
-            #include <zephyr/posix/sys/socket.h>
             #include <zephyr/posix/sys/select.h>
         #endif
     #else
-        #include <net/socket.h>
         #ifdef CONFIG_POSIX_API
             #include <posix/poll.h>
             #include <posix/netdb.h>
-            #include <posix/sys/socket.h>
             #include <posix/sys/select.h>
         #endif
     #endif
-    #define SOCKET_T int
     #define SOL_SOCKET 1
     #define WOLFSSL_USE_GETADDRINFO
 
@@ -229,7 +214,6 @@
     }
 #elif defined(NETOS)
     #include <string.h>
-    #include <sys/types.h>
     struct hostent {
         char* h_name;        /* official name of host */
         char** h_aliases;    /* alias list */
@@ -264,7 +248,6 @@
     #ifdef FREESCALE_MQX
         typedef int socklen_t ;
     #endif
-    #define SOCKET_T int
     #ifndef SO_NOSIGPIPE
         #include <signal.h>  /* ignore SIGPIPE */
     #endif
@@ -4507,8 +4490,6 @@ static WC_INLINE int SimulateWantWriteIOSendCb(WOLFSSL *ssl, char *buf, int sz, 
 {
     static int wantWriteFlag = 1;
 
-    int sd = *(int*)ctx;
-
     (void)ssl;
 
     if (!wantWriteFlag)
@@ -4516,7 +4497,7 @@ static WC_INLINE int SimulateWantWriteIOSendCb(WOLFSSL *ssl, char *buf, int sz, 
         int sent;
         wantWriteFlag = 1;
 
-        sent = wolfIO_Send(sd, buf, sz, 0);
+        sent = wolfIO_Send(ctx, buf, sz, 0);
         if (sent < 0) {
             int err = errno;
 

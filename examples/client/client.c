@@ -182,7 +182,7 @@ static int NonBlockingSSL_Connect(WOLFSSL* ssl)
     ret = wolfSSL_connect_ex(ssl, handShakeCB, timeoutCB, timeoutConnect);
 #endif
     error = wolfSSL_get_error(ssl, 0);
-    sockfd = (SOCKET_T)wolfSSL_get_fd(ssl);
+    sockfd = wolfSSL_get_fd(ssl);
 
     while (ret != WOLFSSL_SUCCESS &&
         (error == WOLFSSL_ERROR_WANT_READ || error == WOLFSSL_ERROR_WANT_WRITE
@@ -743,7 +743,7 @@ static int ClientBenchmarkThroughput(WOLFSSL_CTX* ctx, char* host, word16 port,
     int onlyKeyShare)
 {
     double start, conn_time = 0, tx_time = 0, rx_time = 0;
-    SOCKET_T sockfd = WOLFSSL_SOCKET_INVALID;
+    SOCKET_T sockfd = SOCKET_INVALID;
     WOLFSSL* ssl;
     int ret = 0, err = 0;
 
@@ -2058,7 +2058,7 @@ static void ExampleDebugMemoryCb(size_t sz, int bucketSz, byte st, int type) {
 
 THREAD_RETURN WOLFSSL_THREAD client_test(void* args)
 {
-    SOCKET_T sockfd = WOLFSSL_SOCKET_INVALID;
+    SOCKET_T sockfd = SOCKET_INVALID;
 
     wolfSSL_method_func method = NULL;
     WOLFSSL_CTX*     ctx     = NULL;
@@ -4043,7 +4043,7 @@ THREAD_RETURN WOLFSSL_THREAD client_test(void* args)
 
     if (simulateWantWrite) {
         if (dtlsUDP) {
-            wolfSSL_SetIOWriteCtx(ssl, (void*)&sockfd);
+            wolfSSL_SetIOWriteCtx(ssl, IOCTX2CTX(sockfd));
             udp_connect(&sockfd, host, port);
         }
     }
@@ -4652,7 +4652,7 @@ THREAD_RETURN WOLFSSL_THREAD client_test(void* args)
         }
         if (simulateWantWrite) {
             if (dtlsUDP) {
-                wolfSSL_SetIOWriteCtx(ssl, (void*)&sockfd);
+                wolfSSL_SetIOWriteCtx(ssl, IOCTX2CTX(sockfd));
                 udp_connect(&sockfd, host, port);
             }
         }
