@@ -42202,11 +42202,11 @@ int wolfSSL_GetMaxFragSize(WOLFSSL* ssl, int maxFragment)
         }
 
         /* Readjust maxFragment for MTU size. */
-        #if defined(WOLFSSL_DTLS_MTU)
-            mtuSz = ssl->dtlsMtuSz;
-        #else
-            mtuSz = MAX_MTU;
-        #endif
+    #if defined(WOLFSSL_DTLS_MTU)
+        mtuSz = ssl->dtlsMtuSz;
+    #else
+        mtuSz = MAX_MTU;
+    #endif
         maxFragment = ModifyForMTU(ssl, maxFragment, outputSz, mtuSz);
     }
 #endif

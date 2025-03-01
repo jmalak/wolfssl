@@ -2799,8 +2799,8 @@ typedef struct WOLFSSL_DTLS_CTX {
                                    * the peer's address until we successfully
                                    * de-protect the record. */
 #endif
-    int rfd;
-    int wfd;
+    SOCKET_T rfd;
+    SOCKET_T wfd;
     byte userSet:1;
     byte connected:1; /* When set indicates rfd and wfd sockets are
                        * connected (connect() and bind() both called).
@@ -2859,7 +2859,8 @@ struct WOLFSSL_BIO {
     int          rdIdx;         /* current read index */
     int          readRq;        /* read request */
     union {
-        SOCKET_T fd;
+        SOCKET_T sfd;
+        int      fd;
         size_t   length;
     } num;
     int          eof;           /* eof flag */
@@ -5885,8 +5886,8 @@ struct WOLFSSL {
     WOLFSSL_ALERT_HISTORY alert_history;
     WOLFSSL_ALERT   pendingAlert;
     int             error;
-    int             rfd;                /* read  file descriptor */
-    int             wfd;                /* write file descriptor */
+    SOCKET_T        rfd;                /* read  file descriptor */
+    SOCKET_T        wfd;                /* write file descriptor */
     int             rflags;             /* user read  flags */
     int             wflags;             /* user write flags */
     word32          timeout;            /* session timeout */

@@ -353,7 +353,7 @@ int wolfSSL_BIO_read(WOLFSSL_BIO* bio, void* buf, int len)
                 /* BIO requires built-in socket support
                  *  (cannot be used with WOLFSSL_USER_IO) */
                 bio->flags &= ~WOLFSSL_BIO_FLAG_RETRY;
-                ret = wolfIO_Recv(bio->num.fd, (char*)buf, len, 0);
+                ret = wolfIO_Recv(IOCTX2CTX( bio->num.sfd ), (char*)buf, len, 0);
                 if (ret == WC_NO_ERR_TRACE(WOLFSSL_CBIO_ERR_WANT_READ)) {
                     bio->flags |= WOLFSSL_BIO_FLAG_RETRY;
                 }
@@ -372,10 +372,10 @@ int wolfSSL_BIO_read(WOLFSSL_BIO* bio, void* buf, int len)
                  *  (cannot be used with WOLFSSL_USER_IO) */
                 bio->flags &= ~WOLFSSL_BIO_FLAG_RETRY;
                 if (bio->connected)
-                    ret = wolfIO_Recv(bio->num.fd, (char*)buf, len, 0);
+                    ret = wolfIO_Recv(IOCTX2CTX( bio->num.sfd ), (char*)buf, len, 0);
                 else {
                     wolfSSL_BIO_ADDR_clear(&bio->peer_addr);
-                    ret = wolfIO_RecvFrom(bio->num.fd, &bio->peer_addr,
+                    ret = wolfIO_RecvFrom(IOCTX2CTX( bio->num.sfd ), &bio->peer_addr,
                                           (char*)buf, len, 0);
                 }
                 if (ret == WC_NO_ERR_TRACE(WOLFSSL_CBIO_ERR_WANT_READ)) {
@@ -782,7 +782,7 @@ int wolfSSL_BIO_write(WOLFSSL_BIO* bio, const void* data, int len)
                 /* BIO requires built-in socket support
                  *  (cannot be used with WOLFSSL_USER_IO) */
                 bio->flags &= ~WOLFSSL_BIO_FLAG_RETRY;
-                ret = wolfIO_Send(bio->num.fd, (char*)data, len, 0);
+                ret = wolfIO_Send(IOCTX2CTX( bio->num.sfd ), (char*)data, len, 0);
                 if (ret == WC_NO_ERR_TRACE(WOLFSSL_CBIO_ERR_WANT_WRITE)) {
                     bio->flags |= WOLFSSL_BIO_FLAG_RETRY;
                 }
@@ -801,11 +801,11 @@ int wolfSSL_BIO_write(WOLFSSL_BIO* bio, const void* data, int len)
                  *  (cannot be used with WOLFSSL_USER_IO) */
                 bio->flags &= ~WOLFSSL_BIO_FLAG_RETRY;
                 if (bio->connected)
-                    ret = wolfIO_Send(bio->num.fd, (char*)data, len, 0);
+                    ret = wolfIO_Send(IOCTX2CTX( bio->num.sfd ), (char*)data, len, 0);
                 else if (bio->peer_addr.sa.sa_family == AF_UNSPEC)
                     ret = SOCKET_ERROR_E;
                 else
-                    ret = wolfIO_SendTo(bio->num.fd, &bio->peer_addr, (char*)data, len, 0);
+                    ret = wolfIO_SendTo(IOCTX2CTX( bio->num.sfd ), &bio->peer_addr, (char*)data, len, 0);
                 if (ret == WC_NO_ERR_TRACE(WOLFSSL_CBIO_ERR_WANT_WRITE)) {
                     bio->flags |= WOLFSSL_BIO_FLAG_RETRY;
                 }
@@ -2028,27 +2028,16 @@ long wolfSSL_BIO_set_nbio(WOLFSSL_BIO* bio, long on)
         switch (bio->type) {
             case WOLFSSL_BIO_SOCKET:
             case WOLFSSL_BIO_DGRAM:
-            #ifdef XFCNTL
-                {
-                    int ret;
-                    int flag = XFCNTL(bio->num.fd, F_GETFL, 0);
-                    if (on) {
-                        ret = XFCNTL(bio->num.fd, F_SETFL, flag | O_NONBLOCK);
-                    }
-                    else {
-                        ret = XFCNTL(bio->num.fd, F_SETFL, flag & ~O_NONBLOCK);
-                    }
-
-                    if (ret == -1) {
-                        WOLFSSL_MSG("Call to XFCNTL failed");
-                    }
-                }
-            #endif
+#if (defined(USE_WOLFSSL_IO) || defined(HAVE_HTTP_CLIENT))
+    #if defined(HAVE_IO_TIMEOUT)
+                wolfIO_SetBlockingMode(bio->num.sfd, (int)on);
+    #endif
+#endif
                 break;
             case WOLFSSL_BIO_SSL:
-            #ifdef WOLFSSL_DTLS
+#ifdef WOLFSSL_DTLS
                 wolfSSL_dtls_set_using_nonblock(bio->ptr.ssl, (int)on);
-            #endif
+#endif
                 break;
 
             default:
@@ -2343,15 +2332,14 @@ int wolfSSL_BIO_flush(WOLFSSL_BIO* bio)
     }
 
 
-    WOLFSSL_BIO* wolfSSL_BIO_new_socket(int sfd, int closeF)
+    WOLFSSL_BIO* wolfSSL_BIO_new_socket(SOCKET_T sfd, int closeF)
     {
         WOLFSSL_BIO* bio = wolfSSL_BIO_new(wolfSSL_BIO_s_socket());
 
         WOLFSSL_ENTER("wolfSSL_BIO_new_socket");
         if (bio) {
-            bio->type  = WOLFSSL_BIO_SOCKET;
             bio->shutdown = (byte)closeF;
-            bio->num.fd = (SOCKET_T)sfd;
+            bio->num.sfd = sfd;
         }
         return bio;
     }
@@ -2369,14 +2357,14 @@ int wolfSSL_BIO_flush(WOLFSSL_BIO* bio)
     }
 
 
-    WOLFSSL_BIO* wolfSSL_BIO_new_dgram(int fd, int closeF)
+    WOLFSSL_BIO* wolfSSL_BIO_new_dgram(SOCKET_T sfd, int closeF)
     {
         WOLFSSL_BIO* bio = wolfSSL_BIO_new(wolfSSL_BIO_s_datagram());
 
         WOLFSSL_ENTER("wolfSSL_BIO_new_dgram");
         if (bio) {
             bio->shutdown = (byte)closeF;
-            bio->num.fd = (SOCKET_T)fd;
+            bio->num.sfd = sfd;
         }
         return bio;
     }
@@ -2408,7 +2396,6 @@ int wolfSSL_BIO_flush(WOLFSSL_BIO* bio)
             if (bio->ip != NULL) {
                 XMEMCPY(bio->ip, str, (size_t)(port - str));
                 bio->ip[port - str] = '\0';
-                bio->type  = WOLFSSL_BIO_SOCKET;
             }
             else {
                 wolfSSL_BIO_free(bio);
@@ -2431,7 +2418,6 @@ int wolfSSL_BIO_flush(WOLFSSL_BIO* bio)
         bio = wolfSSL_BIO_new(wolfSSL_BIO_s_socket());
         if (bio) {
             bio->port = (word16)XATOI(port);
-            bio->type  = WOLFSSL_BIO_SOCKET;
         }
         return bio;
     }
@@ -2500,7 +2486,7 @@ int wolfSSL_BIO_flush(WOLFSSL_BIO* bio)
             return WOLFSSL_FAILURE;
         }
 
-        b->num.fd = sfd;
+        b->num.sfd = sfd;
         b->shutdown = WOLFSSL_BIO_CLOSE;
         return WOLFSSL_SUCCESS;
     }
@@ -2524,26 +2510,26 @@ int wolfSSL_BIO_flush(WOLFSSL_BIO* bio)
             return WOLFSSL_FAILURE;
         }
 
-        if (b->num.fd == SOCKET_INVALID) {
+        if (SOCKET_IS_INVALID(b->num.sfd)) {
             if (wolfIO_TcpBind(&sfd, b->port) < 0) {
                 WOLFSSL_MSG("wolfIO_TcpBind error");
                 return WOLFSSL_FAILURE;
             }
-            b->num.fd = sfd;
+            b->num.sfd = sfd;
             b->shutdown = WOLFSSL_BIO_CLOSE;
         }
         else {
             WOLFSSL_BIO* new_bio;
-            int newfd = wolfIO_TcpAccept(b->num.fd, NULL, NULL);
-            if (newfd < 0) {
+            sfd = wolfIO_TcpAccept(b->num.sfd, NULL, NULL);
+            if (SOCKET_IS_INVALID(sfd)) {
                 WOLFSSL_MSG("wolfIO_TcpBind error");
                 return WOLFSSL_FAILURE;
             }
             /* Create a socket BIO for using the accept'ed connection */
-            new_bio = wolfSSL_BIO_new_socket(newfd, WOLFSSL_BIO_CLOSE);
+            new_bio = wolfSSL_BIO_new_socket(sfd, WOLFSSL_BIO_CLOSE);
             if (new_bio == NULL) {
                 WOLFSSL_MSG("wolfSSL_BIO_new_socket error");
-                CloseSocket(newfd);
+                CloseSocket(sfd);
                 return WOLFSSL_FAILURE;
             }
             wolfSSL_BIO_set_callback(new_bio,
@@ -2553,7 +2539,7 @@ int wolfSSL_BIO_flush(WOLFSSL_BIO* bio)
             /* Push onto bio chain for user retrieval */
             if (wolfSSL_BIO_push(b, new_bio) == NULL) {
                 WOLFSSL_MSG("wolfSSL_BIO_push error");
-                /* newfd is closed when bio is free'd */
+                /* sfd is closed when bio is free'd */
                 wolfSSL_BIO_free(new_bio);
                 return WOLFSSL_FAILURE;
             }
@@ -2828,7 +2814,7 @@ int wolfSSL_BIO_flush(WOLFSSL_BIO* bio)
         WOLFSSL_ENTER("wolfSSL_BIO_set_fd");
 
         if (b != NULL) {
-            b->num.fd = (SOCKET_T)fd;
+            b->num.fd = fd;
             b->shutdown = (byte)closeF;
         }
 
@@ -2876,13 +2862,13 @@ int wolfSSL_BIO_flush(WOLFSSL_BIO* bio)
             if ((bio->type == WOLFSSL_BIO_SOCKET) ||
                 (bio->type == WOLFSSL_BIO_DGRAM))
             {
-                bio->num.fd = SOCKET_INVALID;
+                bio->num.sfd = SOCKET_INVALID;
             }
             else if (bio->type == WOLFSSL_BIO_FILE) {
 #ifndef NO_FILESYSTEM
                 bio->ptr.fh = XBADFILE;
 #endif
-                bio->num.fd = SOCKET_INVALID;
+                bio->num.fd = -1;
             }
             else {
                 bio->num.length = 0;
@@ -3033,9 +3019,9 @@ int wolfSSL_BIO_flush(WOLFSSL_BIO* bio)
             #ifdef CloseSocket
                 if (((bio->type == WOLFSSL_BIO_SOCKET) ||
                      (bio->type == WOLFSSL_BIO_DGRAM)) &&
-                    (bio->num.fd != SOCKET_INVALID))
+                    (!SOCKET_IS_INVALID(bio->num.sfd)))
                 {
-                    CloseSocket(bio->num.fd);
+                    CloseSocket(bio->num.sfd);
                 }
             #endif
             }
@@ -3049,7 +3035,7 @@ int wolfSSL_BIO_flush(WOLFSSL_BIO* bio)
                 }
             #if !defined(USE_WINDOWS_API) && !defined(NO_WOLFSSL_DIR)\
                 && !defined(WOLFSSL_NUCLEUS) && !defined(WOLFSSL_NUCLEUS_1_2)
-                else if (bio->num.fd != SOCKET_INVALID) {
+                else if (bio->num.fd != -1) {
                     XCLOSE(bio->num.fd);
                 }
             #endif
@@ -3224,15 +3210,26 @@ int wolfSSL_BIO_get_fd(WOLFSSL_BIO *bio, int* fd)
 {
     WOLFSSL_ENTER("wolfSSL_BIO_get_fd");
 
-    if (bio != NULL) {
-        if (bio->num.fd == SOCKET_INVALID)
-            return WOLFSSL_BIO_ERROR;
-        if (fd != NULL)
-            *fd = (int)bio->num.fd;
-        return (int)bio->num.fd;
-    }
+    if (bio == NULL || bio->num.fd == -1)
+        return -1;
 
-    return WOLFSSL_BIO_ERROR;
+    if (fd != NULL)
+        *fd = bio->num.fd;
+    return bio->num.fd;
+
+}
+
+SOCKET_T wolfSSL_BIO_get_sfd(WOLFSSL_BIO *bio, SOCKET_T* sfd)
+{
+    WOLFSSL_ENTER("wolfSSL_BIO_get_sfd");
+
+    if (bio == NULL || SOCKET_IS_INVALID(bio->num.fd))
+        return SOCKET_INVALID;
+
+    if (sfd != NULL)
+        *sfd = bio->num.sfd;
+    return bio->num.sfd;
+
 }
 
 #ifdef HAVE_EX_DATA_CLEANUP_HOOKS

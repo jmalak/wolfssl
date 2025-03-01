@@ -259,7 +259,7 @@ int client_async_test(int argc, char** argv)
 
 exit:
     /* Cleanup and return */
-    if (sockfd != SOCKET_INVALID)
+    if (!SOCKET_IS_INVALID(sockfd))
         close(sockfd);          /* Close the connection to the server       */
     if (ssl)
         wolfSSL_free(ssl);      /* Free the wolfSSL object                  */
